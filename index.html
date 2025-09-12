@@ -710,27 +710,12 @@
             lengthInput.dispatchEvent(new Event('input'));
         }
 
-        // Smart URL truncation function
-        function truncateUrl(url, maxLength = 80) {
-            if (url.length <= maxLength) {
+        // Smart URL truncation function - EXACTLY 80 characters
+        function truncateUrl(url) {
+            if (url.length <= 80) {
                 return url;
             }
-            
-            const parts = url.split('/');
-            const domain = parts[0] + '//' + parts[2];
-            const path = parts.slice(3).join('/');
-            
-            if (domain.length >= maxLength - 10) {
-                return url.substring(0, maxLength - 3) + '...';
-            }
-            
-            const maxPathLength = maxLength - domain.length - 4; // -4 for "..." and "/"
-            if (path.length > maxPathLength) {
-                const truncatedPath = path.substring(0, maxPathLength - 3) + '...';
-                return domain + '/' + truncatedPath;
-            }
-            
-            return url;
+            return url.substring(0, 80) + '...';
         }
 
         // Toggle full URL display
@@ -761,20 +746,6 @@
                 document.body.removeChild(textarea);
                 showCopyFeedback(feedbackId);
             });
-        }
-
-        // Copy as Markdown format
-        function copyAsMarkdown(shortUrl, destinationUrl) {
-            const markdownText = `[${truncateUrl(shortUrl, 50)}](${shortUrl})`;
-            copyToClipboard(markdownText);
-            showRedirectResult('📋 Markdown format copied to clipboard!', 'success');
-        }
-
-        // Copy as HTML format
-        function copyAsHTML(shortUrl, destinationUrl) {
-            const htmlText = `<a href="${shortUrl}">${truncateUrl(shortUrl, 50)}</a>`;
-            copyToClipboard(htmlText);
-            showRedirectResult('📋 HTML format copied to clipboard!', 'success');
         }
 
         // Show copy feedback
@@ -1261,11 +1232,10 @@
                         <strong>🎉 Success!</strong><br>
                         <div style="margin: 10px 0;">
                             <strong>Your short link (${data.length} characters):</strong><br>
-                            <div class="redirect-url" onclick="copyToClipboard('${shortUrl}')" title="Click to copy">${truncateUrl(shortUrl, 60)}</div>
+                            <div class="redirect-url" onclick="copyToClipboard('${shortUrl}')" title="Click to copy">${truncateUrl(shortUrl)}</div>
                         </div>
                         <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
                         <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
-                        <button onclick="copyAsMarkdown('${shortUrl}', '${destinationUrl}')" class="btn-small">📝 Copy as Markdown</button>
                     `, 'success');
                     
                     // Clear form
@@ -1304,7 +1274,7 @@
             }
         }
 
-        // Enhanced display for redirects with smart URL handling
+        // Enhanced display for redirects with 80-character URL truncation
         function displayRedirects() {
             const list = document.getElementById('redirectsList');
             
@@ -1319,7 +1289,7 @@
 
             list.innerHTML = sortedRedirects.map((redirect, index) => {
                 const shortUrl = `https://${redirect.domain}/${redirect.fullPath}`;
-                const truncatedUrl = truncateUrl(shortUrl, 80);
+                const truncatedUrl = truncateUrl(shortUrl); // EXACTLY 80 chars + "..."
                 const isLongUrl = shortUrl.length > 80;
                 const createdDate = new Date(redirect.created).toLocaleDateString();
                 const uniqueId = `redirect-${index}`;
@@ -1343,8 +1313,6 @@
                             <div class="url-actions">
                                 <button onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" class="btn-success btn-small">📋 Copy Link</button>
                                 <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
-                                <button onclick="copyAsMarkdown('${shortUrl}', '${redirect.destinationUrl}')" class="btn-small">📝 Copy as Markdown</button>
-                                <button onclick="copyAsHTML('${shortUrl}', '${redirect.destinationUrl}')" class="btn-small">🔗 Copy as HTML</button>
                             </div>
                         </div>
                         
