@@ -133,7 +133,28 @@
             color: #4caf50;
             font-family: monospace;
             font-weight: bold;
+            cursor: pointer;
+            position: relative;
+        }
+        .redirect-url-short {
+            display: block;
+        }
+        .redirect-url-full {
+            display: none;
             word-break: break-all;
+            background: #222;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            border: 1px solid #555;
+            font-size: 12px;
+        }
+        .url-toggle {
+            color: #667eea;
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-left: 10px;
         }
         .redirect-destination {
             color: #ccc;
@@ -356,6 +377,38 @@
             lengthInput.dispatchEvent(new Event('input')); // Trigger validation
         }
 
+        function shortenUrl(url, maxLength = 80) {
+            if (url.length <= maxLength) {
+                return url;
+            }
+            
+            const domain = url.split('/')[0] + '//' + url.split('/')[2];
+            const path = url.substring(domain.length);
+            
+            if (path.length > maxLength - domain.length - 3) {
+                const shortenedPath = path.substring(0, maxLength - domain.length - 6) + '...';
+                return domain + shortenedPath;
+            }
+            
+            return url;
+        }
+
+        function toggleFullUrl(redirectId) {
+            const shortEl = document.getElementById(`short-${redirectId}`);
+            const fullEl = document.getElementById(`full-${redirectId}`);
+            const toggleEl = document.getElementById(`toggle-${redirectId}`);
+            
+            if (fullEl.style.display === 'none') {
+                shortEl.style.display = 'none';
+                fullEl.style.display = 'block';
+                toggleEl.textContent = 'Show Less';
+            } else {
+                shortEl.style.display = 'block';
+                fullEl.style.display = 'none';
+                toggleEl.textContent = 'Show Full URL';
+            }
+        }
+
         async function testConnection() {
             const statusEl = document.getElementById('status');
             
@@ -461,13 +514,15 @@
 
                 if (response.ok) {
                     const shortUrl = `${CONFIG.serverUrl}/${data.fullPath}`;
+                    const displayUrl = shortenUrl(shortUrl, 60);
+                    
                     showResult(`
                         <strong>🎉 Success!</strong><br>
                         <div style="margin: 10px 0;">
                             <strong>Your short link (${data.length} characters):</strong><br>
-                            <div class="redirect-url">${shortUrl}</div>
+                            <div class="redirect-url">${displayUrl}${shortUrl.length > 60 ? ' <span style="color:#999;">(truncated for display)</span>' : ''}</div>
                         </div>
-                        <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
+                        <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Full Link</button>
                         <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
                     `, 'success');
                     
@@ -536,11 +591,17 @@
 
             list.innerHTML = sortedRedirects.map(redirect => {
                 const shortUrl = `${CONFIG.serverUrl}/${redirect.fullPath}`;
+                const displayUrl = shortenUrl(shortUrl, 80);
                 const createdDate = new Date(redirect.created).toLocaleDateString();
+                const needsToggle = shortUrl.length > 80;
                 
                 return `
                     <div class="redirect-item">
-                        <div class="redirect-url">${shortUrl}</div>
+                        <div class="redirect-url">
+                            <span id="short-${redirect.id}" class="redirect-url-short">${displayUrl}</span>
+                            <div id="full-${redirect.id}" class="redirect-url-full" style="display: none;">${shortUrl}</div>
+                            ${needsToggle ? `<span id="toggle-${redirect.id}" class="url-toggle" onclick="toggleFullUrl(${redirect.id})">Show Full URL</span>` : ''}
+                        </div>
                         <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
                         <div class="redirect-stats">
                             👆 ${redirect.clicks} clicks | 📅 Created: ${createdDate} | 
@@ -548,7 +609,7 @@
                             ${redirect.active ? '✅ Active' : '❌ Inactive'}
                         </div>
                         <div style="margin-top: 10px;">
-                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy</button>
+                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Full URL</button>
                             <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
                             <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
                                 ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
@@ -611,7 +672,7 @@
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                showResult('📋 Copied to clipboard!', 'success');
+                showResult('📋 Full URL copied to clipboard!', 'success');
             }).catch(() => {
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
@@ -619,7 +680,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showResult('📋 Copied to clipboard!', 'success');
+                showResult('📋 Full URL copied to clipboard!', 'success');
             });
         }
 
