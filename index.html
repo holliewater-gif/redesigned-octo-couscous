@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirect Dashboard - holliewater-gif</title>
+    <style>
+        body {
+            background: #0f0f23;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.connected { background: #4caf50; }
+        .status.disconnected { background: #f44336; }
+        .status.connecting { background: #ff9800; }
+        .form-section {
+            background: #232344;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #333;
+            color: #fff;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        .btn-success {
+            background: #4caf50;
+        }
+        .btn-success:hover {
+            background: #45a049;
+        }
+        .redirect-item {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        .redirect-url {
+            color: #4caf50;
+            font-family: monospace;
+            font-weight: bold;
+            word-break: break-all;
+        }
+        .redirect-destination {
+            color: #ccc;
+            margin: 5px 0;
+            word-break: break-all;
+        }
+        .redirect-stats {
+            color: #999;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .error { 
+            background: #4d1e1e;
+            color: #ff6b6b; 
+            border-left: 4px solid #f44336;
+        }
+        .success { 
+            background: #1e4d2e;
+            color: #4caf50; 
+            border-left: 4px solid #4caf50;
+        }
+        .loading {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #232344;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #ccc;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+            }
+            .stats {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Redirect Dashboard</h1>
+            <p>Managing redirects for <strong>maxforums.co</strong></p>
+        </div>
+        
+        <div id="status" class="status connecting">
+            🔄 Connecting to maxforums.co...
+        </div>
+
+        <div class="stats" id="statsSection" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRedirects">0</div>
+                <div class="stat-label">Total Redirects</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalClicks">0</div>
+                <div class="stat-label">Total Clicks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeRedirects">0</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>✨ Create New Redirect</h2>
+            
+            <div class="form-group">
+                <label for="destinationUrl">🎯 Destination URL:</label>
+                <input type="url" id="destinationUrl" placeholder="https://example.com/your-page" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="customPath">🔤 Custom Path (optional):</label>
+                    <input type="text" id="customPath" placeholder="my-custom-link">
+                </div>
+                <div class="form-group">
+                    <label for="prefix">📂 Prefix (optional):</label>
+                    <select id="prefix">
+                        <option value="">No prefix</option>
+                        <option value="a">a/</option>
+                        <option value="b">b/</option>
+                        <option value="c">c/</option>
+                        <option value="d">d/</option>
+                        <option value="e">e/</option>
+                        <option value="f">f/</option>
+                        <option value="g">g/</option>
+                        <option value="h">h/</option>
+                        <option value="i">i/</option>
+                        <option value="j">j/</option>
+                        <option value="k">k/</option>
+                        <option value="l">l/</option>
+                        <option value="m">m/</option>
+                        <option value="n">n/</option>
+                        <option value="o">o/</option>
+                        <option value="p">p/</option>
+                        <option value="q">q/</option>
+                        <option value="r">r/</option>
+                        <option value="s">s/</option>
+                        <option value="t">t/</option>
+                        <option value="u">u/</option>
+                        <option value="v">v/</option>
+                        <option value="w">w/</option>
+                        <option value="x">x/</option>
+                        <option value="y">y/</option>
+                        <option value="z">z/</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="length">📏 Length:</label>
+                    <select id="length">
+                        <option value="6">6 characters</option>
+                        <option value="8" selected>8 characters</option>
+                        <option value="12">12 characters</option>
+                        <option value="16">16 characters</option>
+                        <option value="32">32 characters</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="createBtn" onclick="createRedirect()" disabled>
+                🚀 Create Redirect
+            </button>
+
+            <div id="result"></div>
+        </div>
+
+        <div class="form-section">
+            <h2>📋 Your Redirects</h2>
+            <div id="redirectsList" class="loading">Loading redirects...</div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ IMPORTANT: Update these settings for your setup
+        const CONFIG = {
+            serverUrl: 'https://maxforums.co',           // Your redirect server
+            apiKey: 'mySecretKey123456789'               // CHANGE THIS to match your server!
+        };
+
+        let isConnected = false;
+        let redirects = [];
+
+        // Start when page loads
+        window.onload = function() {
+            console.log('🚀 Starting dashboard...');
+            testConnection();
+        };
+
+        async function testConnection() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                console.log('🔗 Testing connection to:', CONFIG.serverUrl);
+                
+                const response = await fetch(`${CONFIG.serverUrl}/api/config`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    isConnected = true;
+                    statusEl.textContent = '✅ Connected to maxforums.co successfully!';
+                    statusEl.className = 'status connected';
+                    document.getElementById('createBtn').disabled = false;
+                    document.getElementById('statsSection').style.display = 'flex';
+                    
+                    console.log('✅ Connection successful!');
+                    await loadRedirects();
+                    await loadStats();
+                } else if (response.status === 401) {
+                    throw new Error('❌ Invalid API key - please check your configuration');
+                } else {
+                    throw new Error(`❌ Server responded with error: ${response.status}`);
+                }
+            } catch (error) {
+                isConnected = false;
+                statusEl.textContent = `❌ Connection failed: ${error.message}`;
+                statusEl.className = 'status disconnected';
+                document.getElementById('createBtn').disabled = true;
+                
+                console.error('❌ Connection error:', error);
+                
+                // Show helpful error message
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <strong>Connection Failed!</strong><br>
+                        ${error.message}<br><br>
+                        <strong>Please check:</strong><br>
+                        1. Your API key matches the one in your maxforums.co server<br>
+                        2. Your maxforums.co server is running<br>
+                        3. CORS is properly configured<br><br>
+                        <strong>Current settings:</strong><br>
+                        Server: ${CONFIG.serverUrl}<br>
+                        API Key: ${CONFIG.apiKey.substring(0, 8)}...
+                    </div>
+                `;
+            }
+        }
+
+        async function createRedirect() {
+            if (!isConnected) {
+                alert('❌ Not connected to server');
+                return;
+            }
+
+            const destinationUrl = document.getElementById('destinationUrl').value.trim();
+            const customPath = document.getElementById('customPath').value.trim();
+            const prefix = document.getElementById('prefix').value;
+            const length = document.getElementById('length').value;
+
+            if (!destinationUrl) {
+                showResult('❌ Please enter a destination URL', 'error');
+                return;
+            }
+
+            // Validate URL
+            try {
+                new URL(destinationUrl);
+            } catch {
+                showResult('❌ Please enter a valid URL (include https://)', 'error');
+                return;
+            }
+
+            const createBtn = document.getElementById('createBtn');
+            createBtn.disabled = true;
+            createBtn.textContent = '⏳ Creating...';
+
+            try {
+                console.log('📝 Creating redirect...', {
+                    destinationUrl,
+                    customPath: customPath || undefined,
+                    prefix: prefix || undefined,
+                    length: parseInt(length)
+                });
+
+                const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        destinationUrl: destinationUrl,
+                        customPath: customPath || undefined,
+                        prefix: prefix || undefined,
+                        length: parseInt(length)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const shortUrl = `${CONFIG.serverUrl}/${data.fullPath}`;
+                    showResult(`
+                        <strong>🎉 Success!</strong><br>
+                        <div style="margin: 10px 0;">
+                            <strong>Your short link:</strong><br>
+                            <div class="redirect-url">${shortUrl}</div>
+                        </div>
+                        <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
+                        <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
+                    `, 'success');
+                    
+                    // Clear form
+                    document.getElementById('destinationUrl').value = '';
+                    document.getElementById('customPath').value = '';
+                    document.getElementById('prefix').value = '';
+                    
+                    console.log('✅ Redirect created:', shortUrl);
+                    
+                    // Reload lists
+                    await loadRedirects();
+                    await loadStats();
+                } else {
+                    throw new Error(data.error || 'Failed to create redirect');
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+                console.error('❌ Create error:', error);
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = '🚀 Create Redirect';
+            }
+        }
+
+        async function loadRedirects() {
+            try {
+                console.log('📋 Loading redirects...');
+                const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                redirects = await response.json();
+                displayRedirects();
+                console.log(`✅ Loaded ${redirects.length} redirects`);
+            } catch (error) {
+                console.error('❌ Failed to load redirects:', error);
+                document.getElementById('redirectsList').innerHTML = 
+                    `<div class="error">Failed to load redirects: ${error.message}</div>`;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/stats`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const stats = await response.json();
+                document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
+                document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
+                document.getElementById('activeRedirects').textContent = stats.activeRedirects || 0;
+            } catch (error) {
+                console.error('❌ Failed to load stats:', error);
+            }
+        }
+
+        function displayRedirects() {
+            const list = document.getElementById('redirectsList');
+            
+            if (redirects.length === 0) {
+                list.innerHTML = '<div class="loading">📭 No redirects yet. Create your first one above!</div>';
+                return;
+            }
+
+            // Sort by creation date (newest first)
+            const sortedRedirects = [...redirects].sort((a, b) => 
+                new Date(b.created) - new Date(a.created)
+            );
+
+            list.innerHTML = sortedRedirects.map(redirect => {
+                const shortUrl = `${CONFIG.serverUrl}/${redirect.fullPath}`;
+                const createdDate = new Date(redirect.created).toLocaleDateString();
+                
+                return `
+                    <div class="redirect-item">
+                        <div class="redirect-url">${shortUrl}</div>
+                        <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
+                        <div class="redirect-stats">
+                            👆 ${redirect.clicks} clicks | 📅 Created: ${createdDate} | 
+                            📏 ${redirect.length || 8} chars | 
+                            ${redirect.active ? '✅ Active' : '❌ Inactive'}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy</button>
+                            <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
+                            <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
+                                ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
+                            </button>
+                            <button onclick="deleteRedirect('${redirect.fullPath}')" class="btn-danger btn-small">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deleteRedirect(fullPath) {
+            if (!confirm('🗑️ Are you sure you want to delete this redirect?')) return;
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/redirects/${encodeURIComponent(fullPath)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    showResult('✅ Redirect deleted successfully!', 'success');
+                    await loadRedirects();
+                    await loadStats();
+                } else {
+                    throw new Error('Failed to delete redirect');
+                }
+            } catch (error) {
+                showResult(`❌ Error deleting redirect: ${error.message}`, 'error');
+            }
+        }
+
+        async function toggleRedirect(fullPath, currentState) {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/redirects/${encodeURIComponent(fullPath)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        active: !currentState
+                    })
+                });
+
+                if (response.ok) {
+                    const action = !currentState ? 'activated' : 'deactivated';
+                    showResult(`✅ Redirect ${action} successfully!`, 'success');
+                    await loadRedirects();
+                    await loadStats();
+                } else {
+                    throw new Error('Failed to update redirect');
+                }
+            } catch (error) {
+                showResult(`❌ Error updating redirect: ${error.message}`, 'error');
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showResult('📋 Copied to clipboard!', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showResult('📋 Copied to clipboard!', 'success');
+            });
+        }
+
+        function showResult(message, type) {
+            const result = document.getElementById('result');
+            result.innerHTML = `<div class="${type}">${message}</div>`;
+            
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
