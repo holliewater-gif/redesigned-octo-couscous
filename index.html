@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirect Dashboard - holliewater-gif</title>
+    <title>Redirect Dashboard</title>
     <style>
         body {
             background: #0f0f23;
@@ -70,6 +70,30 @@
             border-color: #667eea;
             outline: none;
         }
+        .length-presets {
+            margin-top: 8px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .preset-btn {
+            background: #2d3255;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            font-size: 11px;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .preset-btn:hover {
+            background: #667eea;
+        }
+        .length-info {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
         button {
             background: #667eea;
             color: white;
@@ -95,14 +119,8 @@
         .btn-danger {
             background: #f44336;
         }
-        .btn-danger:hover {
-            background: #d32f2f;
-        }
         .btn-success {
             background: #4caf50;
-        }
-        .btn-success:hover {
-            background: #45a049;
         }
         .redirect-item {
             background: #333;
@@ -175,6 +193,9 @@
             }
             .stats {
                 flex-direction: column;
+            }
+            .length-presets {
+                gap: 3px;
             }
         }
     </style>
@@ -251,14 +272,21 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="length">📏 Length:</label>
-                    <select id="length">
-                        <option value="6">6 characters</option>
-                        <option value="8" selected>8 characters</option>
-                        <option value="12">12 characters</option>
-                        <option value="16">16 characters</option>
-                        <option value="32">32 characters</option>
-                    </select>
+                    <label for="length">📏 Length (1-5000):</label>
+                    <input type="number" id="length" min="1" max="5000" value="8" placeholder="Enter 1-5000">
+                    <div class="length-presets">
+                        <button type="button" class="preset-btn" onclick="setLength(8)">8</button>
+                        <button type="button" class="preset-btn" onclick="setLength(16)">16</button>
+                        <button type="button" class="preset-btn" onclick="setLength(32)">32</button>
+                        <button type="button" class="preset-btn" onclick="setLength(64)">64</button>
+                        <button type="button" class="preset-btn" onclick="setLength(128)">128</button>
+                        <button type="button" class="preset-btn" onclick="setLength(256)">256</button>
+                        <button type="button" class="preset-btn" onclick="setLength(512)">512</button>
+                        <button type="button" class="preset-btn" onclick="setLength(1000)">1K</button>
+                        <button type="button" class="preset-btn" onclick="setLength(2500)">2.5K</button>
+                        <button type="button" class="preset-btn" onclick="setLength(5000)">5K</button>
+                    </div>
+                    <div class="length-info">Click presets or type any number (1-5000 characters)</div>
                 </div>
             </div>
 
@@ -276,7 +304,7 @@
     </div>
 
     <script>
-        // ⚠️ IMPORTANT: Update these settings for your setup
+        // ⚠️ IMPORTANT: Update these settings
         const CONFIG = {
             serverUrl: 'https://maxforums.co',           // Your redirect server
             apiKey: 'mySecretKey123456789'               // CHANGE THIS to match your server!
@@ -285,11 +313,48 @@
         let isConnected = false;
         let redirects = [];
 
-        // Start when page loads
         window.onload = function() {
             console.log('🚀 Starting dashboard...');
             testConnection();
+            setupLengthValidation();
         };
+
+        function setupLengthValidation() {
+            const lengthInput = document.getElementById('length');
+            
+            lengthInput.addEventListener('input', function() {
+                let value = parseInt(this.value);
+                
+                // Validate range
+                if (value < 1) {
+                    this.value = 1;
+                } else if (value > 5000) {
+                    this.value = 5000;
+                }
+                
+                // Update info text based on value
+                const info = document.querySelector('.length-info');
+                const currentValue = parseInt(this.value) || 8;
+                
+                if (currentValue <= 10) {
+                    info.textContent = `${currentValue} chars - Very short link`;
+                } else if (currentValue <= 50) {
+                    info.textContent = `${currentValue} chars - Short link`;
+                } else if (currentValue <= 500) {
+                    info.textContent = `${currentValue} chars - Medium link`;
+                } else if (currentValue <= 2000) {
+                    info.textContent = `${currentValue} chars - Long link`;
+                } else {
+                    info.textContent = `${currentValue} chars - Very long link`;
+                }
+            });
+        }
+
+        function setLength(length) {
+            const lengthInput = document.getElementById('length');
+            lengthInput.value = length;
+            lengthInput.dispatchEvent(new Event('input')); // Trigger validation
+        }
 
         async function testConnection() {
             const statusEl = document.getElementById('status');
@@ -326,7 +391,6 @@
                 
                 console.error('❌ Connection error:', error);
                 
-                // Show helpful error message
                 document.getElementById('result').innerHTML = `
                     <div class="error">
                         <strong>Connection Failed!</strong><br>
@@ -352,14 +416,19 @@
             const destinationUrl = document.getElementById('destinationUrl').value.trim();
             const customPath = document.getElementById('customPath').value.trim();
             const prefix = document.getElementById('prefix').value;
-            const length = document.getElementById('length').value;
+            const length = parseInt(document.getElementById('length').value) || 8;
 
             if (!destinationUrl) {
                 showResult('❌ Please enter a destination URL', 'error');
                 return;
             }
 
-            // Validate URL
+            // Validate length
+            if (length < 1 || length > 5000) {
+                showResult('❌ Length must be between 1 and 5000 characters', 'error');
+                return;
+            }
+
             try {
                 new URL(destinationUrl);
             } catch {
@@ -372,13 +441,8 @@
             createBtn.textContent = '⏳ Creating...';
 
             try {
-                console.log('📝 Creating redirect...', {
-                    destinationUrl,
-                    customPath: customPath || undefined,
-                    prefix: prefix || undefined,
-                    length: parseInt(length)
-                });
-
+                console.log('📝 Creating redirect with length:', length);
+                
                 const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
                     method: 'POST',
                     headers: {
@@ -389,7 +453,7 @@
                         destinationUrl: destinationUrl,
                         customPath: customPath || undefined,
                         prefix: prefix || undefined,
-                        length: parseInt(length)
+                        length: length
                     })
                 });
 
@@ -400,21 +464,18 @@
                     showResult(`
                         <strong>🎉 Success!</strong><br>
                         <div style="margin: 10px 0;">
-                            <strong>Your short link:</strong><br>
+                            <strong>Your short link (${data.length} characters):</strong><br>
                             <div class="redirect-url">${shortUrl}</div>
                         </div>
                         <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
                         <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
                     `, 'success');
                     
-                    // Clear form
                     document.getElementById('destinationUrl').value = '';
                     document.getElementById('customPath').value = '';
                     document.getElementById('prefix').value = '';
+                    document.getElementById('length').value = 8;
                     
-                    console.log('✅ Redirect created:', shortUrl);
-                    
-                    // Reload lists
                     await loadRedirects();
                     await loadStats();
                 } else {
@@ -422,7 +483,6 @@
                 }
             } catch (error) {
                 showResult(`❌ Error: ${error.message}`, 'error');
-                console.error('❌ Create error:', error);
             } finally {
                 createBtn.disabled = false;
                 createBtn.textContent = '🚀 Create Redirect';
@@ -431,7 +491,6 @@
 
         async function loadRedirects() {
             try {
-                console.log('📋 Loading redirects...');
                 const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
                     headers: {
                         'X-API-Key': CONFIG.apiKey
@@ -440,9 +499,7 @@
 
                 redirects = await response.json();
                 displayRedirects();
-                console.log(`✅ Loaded ${redirects.length} redirects`);
             } catch (error) {
-                console.error('❌ Failed to load redirects:', error);
                 document.getElementById('redirectsList').innerHTML = 
                     `<div class="error">Failed to load redirects: ${error.message}</div>`;
             }
@@ -461,7 +518,7 @@
                 document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
                 document.getElementById('activeRedirects').textContent = stats.activeRedirects || 0;
             } catch (error) {
-                console.error('❌ Failed to load stats:', error);
+                console.error('Failed to load stats:', error);
             }
         }
 
@@ -473,7 +530,6 @@
                 return;
             }
 
-            // Sort by creation date (newest first)
             const sortedRedirects = [...redirects].sort((a, b) => 
                 new Date(b.created) - new Date(a.created)
             );
@@ -557,7 +613,6 @@
             navigator.clipboard.writeText(text).then(() => {
                 showResult('📋 Copied to clipboard!', 'success');
             }).catch(() => {
-                // Fallback for older browsers
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
                 document.body.appendChild(textarea);
@@ -572,7 +627,6 @@
             const result = document.getElementById('result');
             result.innerHTML = `<div class="${type}">${message}</div>`;
             
-            // Auto-hide success messages after 3 seconds
             if (type === 'success') {
                 setTimeout(() => {
                     result.innerHTML = '';
