@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirect Dashboard</title>
+    <title>Multi-Domain Redirect Dashboard</title>
     <style>
         body {
             background: #0f0f23;
@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             background: #1a1a2e;
             border-radius: 8px;
@@ -33,6 +33,37 @@
         .status.connected { background: #4caf50; }
         .status.disconnected { background: #f44336; }
         .status.connecting { background: #ff9800; }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+        .tab {
+            padding: 12px 20px;
+            background: #232344;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            margin-right: 5px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: #fff;
+        }
+        .tab:hover:not(.active) {
+            background: #2d3255;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
         .form-section {
             background: #232344;
             padding: 20px;
@@ -169,12 +200,21 @@
         .btn-warning {
             background: #ff9800;
         }
-        .redirect-item {
+        .redirect-item, .domain-item {
             background: #333;
             padding: 15px;
             margin: 10px 0;
             border-radius: 5px;
             border-left: 4px solid #667eea;
+        }
+        .domain-item.verified {
+            border-left-color: #4caf50;
+        }
+        .domain-item.pending {
+            border-left-color: #ff9800;
+        }
+        .domain-item.failed {
+            border-left-color: #f44336;
         }
         .redirect-url {
             color: #4caf50;
@@ -182,6 +222,63 @@
             font-weight: bold;
             cursor: pointer;
             position: relative;
+        }
+        .domain-name {
+            color: #4caf50;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .domain-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .domain-status.verified {
+            background: #4caf50;
+            color: white;
+        }
+        .domain-status.pending {
+            background: #ff9800;
+            color: white;
+        }
+        .domain-status.failed {
+            background: #f44336;
+            color: white;
+        }
+        .dns-instructions {
+            background: #2a2a44;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .dns-record {
+            margin: 8px 0;
+            padding: 8px;
+            background: #333;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        .verification-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .verification-result.success {
+            background: #1e4d2e;
+            color: #4caf50;
+            border-left: 4px solid #4caf50;
+        }
+        .verification-result.failed {
+            background: #4d1e1e;
+            color: #ff6b6b;
+            border-left: 4px solid #f44336;
         }
         .redirect-url-short {
             display: block;
@@ -213,6 +310,11 @@
             font-size: 12px;
             margin: 5px 0;
         }
+        .domain-stats {
+            color: #999;
+            font-size: 12px;
+            margin: 5px 0;
+        }
         .result {
             margin-top: 20px;
             padding: 15px;
@@ -235,8 +337,9 @@
         }
         .stats {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         .stat-card {
             background: #232344;
@@ -244,6 +347,7 @@
             border-radius: 8px;
             text-align: center;
             flex: 1;
+            min-width: 140px;
         }
         .stat-number {
             font-size: 24px;
@@ -264,6 +368,16 @@
             border-radius: 4px;
         }
         @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            .tabs {
+                flex-direction: column;
+            }
+            .tab {
+                margin: 2px 0;
+                border-radius: 4px;
+            }
             .form-row {
                 flex-direction: column;
             }
@@ -279,12 +393,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔗 Redirect Dashboard</h1>
-            <p>Managing redirects for <strong>maxforums.co</strong></p>
+            <h1>🌐 Multi-Domain Redirect Dashboard</h1>
+            <p>Managing redirects across multiple domains</p>
         </div>
         
         <div id="status" class="status connecting">
-            🔄 Connecting to maxforums.co...
+            🔄 Connecting to server...
         </div>
 
         <div class="stats" id="statsSection" style="display: none;">
@@ -297,8 +411,12 @@
                 <div class="stat-label">Total Clicks</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="activeRedirects">0</div>
-                <div class="stat-label">Active</div>
+                <div class="stat-number" id="totalDomains">0</div>
+                <div class="stat-label">Total Domains</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="verifiedDomains">0</div>
+                <div class="stat-label">Verified Domains</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="bannedIPs">0</div>
@@ -306,115 +424,161 @@
             </div>
         </div>
 
-        <!-- NEW: Server Settings Section -->
-        <div class="form-section" id="settingsSection" style="display: none;">
-            <h2>⚙️ Server Settings</h2>
-            
-            <div class="form-group">
-                <label for="banRedirectUrl">🔀 Ban Redirect URL:</label>
-                <input type="url" id="banRedirectUrl" placeholder="https://example.com/banned-page" required>
-                <div class="settings-info">
-                    When someone tries to access an unauthorized redirect or a banned IP attempts access, 
-                    they will be redirected to this URL instead of getting an error page.
-                </div>
-            </div>
-
-            <div class="form-group">
-                <div class="toggle-switch">
-                    <label>🔀 Enable Ban Redirects:</label>
-                    <label class="switch">
-                        <input type="checkbox" id="enableBanRedirect" checked>
-                        <span class="slider"></span>
-                    </label>
-                    <span id="banRedirectStatus">Enabled</span>
-                </div>
-                <div class="settings-info">
-                    When enabled, banned/unauthorized requests are redirected to your chosen URL. 
-                    When disabled, they get a "Forbidden" error page.
-                </div>
-            </div>
-
-            <button id="saveSettingsBtn" onclick="saveSettings()" disabled>
-                💾 Save Settings
-            </button>
-
-            <div id="settingsResult"></div>
+        <div class="tabs" id="tabsSection" style="display: none;">
+            <button class="tab active" onclick="showTab('domains')">🌐 Domains</button>
+            <button class="tab" onclick="showTab('redirects')">🔗 Redirects</button>
+            <button class="tab" onclick="showTab('settings')">⚙️ Settings</button>
         </div>
 
-        <div class="form-section">
-            <h2>✨ Create New Redirect</h2>
-            
-            <div class="form-group">
-                <label for="destinationUrl">🎯 Destination URL:</label>
-                <input type="url" id="destinationUrl" placeholder="https://example.com/your-page" required>
-            </div>
-
-            <div class="form-row">
+        <!-- Domains Tab -->
+        <div id="domains-tab" class="tab-content active">
+            <div class="form-section">
+                <h2>🌐 Add New Domain</h2>
+                
                 <div class="form-group">
-                    <label for="customPath">🔤 Custom Path (optional):</label>
-                    <input type="text" id="customPath" placeholder="my-custom-link">
-                </div>
-                <div class="form-group">
-                    <label for="prefix">📂 Prefix (optional):</label>
-                    <select id="prefix">
-                        <option value="">No prefix</option>
-                        <option value="a">a/</option>
-                        <option value="b">b/</option>
-                        <option value="c">c/</option>
-                        <option value="d">d/</option>
-                        <option value="e">e/</option>
-                        <option value="f">f/</option>
-                        <option value="g">g/</option>
-                        <option value="h">h/</option>
-                        <option value="i">i/</option>
-                        <option value="j">j/</option>
-                        <option value="k">k/</option>
-                        <option value="l">l/</option>
-                        <option value="m">m/</option>
-                        <option value="n">n/</option>
-                        <option value="o">o/</option>
-                        <option value="p">p/</option>
-                        <option value="q">q/</option>
-                        <option value="r">r/</option>
-                        <option value="s">s/</option>
-                        <option value="t">t/</option>
-                        <option value="u">u/</option>
-                        <option value="v">v/</option>
-                        <option value="w">w/</option>
-                        <option value="x">x/</option>
-                        <option value="y">y/</option>
-                        <option value="z">z/</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="length">📏 Length (1-5000):</label>
-                    <input type="number" id="length" min="1" max="5000" value="8" placeholder="Enter 1-5000">
-                    <div class="length-presets">
-                        <button type="button" class="preset-btn" onclick="setLength(8)">8</button>
-                        <button type="button" class="preset-btn" onclick="setLength(16)">16</button>
-                        <button type="button" class="preset-btn" onclick="setLength(32)">32</button>
-                        <button type="button" class="preset-btn" onclick="setLength(64)">64</button>
-                        <button type="button" class="preset-btn" onclick="setLength(128)">128</button>
-                        <button type="button" class="preset-btn" onclick="setLength(256)">256</button>
-                        <button type="button" class="preset-btn" onclick="setLength(512)">512</button>
-                        <button type="button" class="preset-btn" onclick="setLength(1000)">1K</button>
-                        <button type="button" class="preset-btn" onclick="setLength(2500)">2.5K</button>
-                        <button type="button" class="preset-btn" onclick="setLength(5000)">5K</button>
+                    <label for="newDomain">Domain Name:</label>
+                    <input type="text" id="newDomain" placeholder="example.com" required>
+                    <div class="settings-info">
+                        Enter your domain without "www" or "https://" (e.g., "example.com")
                     </div>
-                    <div class="length-info">Click presets or type any number (1-5000 characters)</div>
                 </div>
+
+                <button id="addDomainBtn" onclick="addDomain()" disabled>
+                    🌐 Add Domain
+                </button>
+
+                <div id="domainResult"></div>
             </div>
 
-            <button id="createBtn" onclick="createRedirect()" disabled>
-                🚀 Create Redirect
-            </button>
-
-            <div id="result"></div>
+            <div class="form-section">
+                <h2>📋 Your Domains</h2>
+                <div id="domainsList" class="loading">Loading domains...</div>
+            </div>
         </div>
 
-        <div class="form-section">
-            <h2>📋 Your Redirects</h2>
-            <div id="redirectsList" class="loading">Loading redirects...</div>
+        <!-- Redirects Tab -->
+        <div id="redirects-tab" class="tab-content">
+            <div class="form-section">
+                <h2>✨ Create New Redirect</h2>
+                
+                <div class="form-group">
+                    <label for="destinationUrl">🎯 Destination URL:</label>
+                    <input type="url" id="destinationUrl" placeholder="https://example.com/your-page" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="redirectDomain">🌐 Domain:</label>
+                        <select id="redirectDomain">
+                            <option value="">Loading domains...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="customPath">🔤 Custom Path (optional):</label>
+                        <input type="text" id="customPath" placeholder="my-custom-link">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prefix">📂 Prefix (optional):</label>
+                        <select id="prefix">
+                            <option value="">No prefix</option>
+                            <option value="a">a/</option>
+                            <option value="b">b/</option>
+                            <option value="c">c/</option>
+                            <option value="d">d/</option>
+                            <option value="e">e/</option>
+                            <option value="f">f/</option>
+                            <option value="g">g/</option>
+                            <option value="h">h/</option>
+                            <option value="i">i/</option>
+                            <option value="j">j/</option>
+                            <option value="k">k/</option>
+                            <option value="l">l/</option>
+                            <option value="m">m/</option>
+                            <option value="n">n/</option>
+                            <option value="o">o/</option>
+                            <option value="p">p/</option>
+                            <option value="q">q/</option>
+                            <option value="r">r/</option>
+                            <option value="s">s/</option>
+                            <option value="t">t/</option>
+                            <option value="u">u/</option>
+                            <option value="v">v/</option>
+                            <option value="w">w/</option>
+                            <option value="x">x/</option>
+                            <option value="y">y/</option>
+                            <option value="z">z/</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="length">📏 Length (1-5000):</label>
+                        <input type="number" id="length" min="1" max="5000" value="8" placeholder="Enter 1-5000">
+                        <div class="length-presets">
+                            <button type="button" class="preset-btn" onclick="setLength(8)">8</button>
+                            <button type="button" class="preset-btn" onclick="setLength(16)">16</button>
+                            <button type="button" class="preset-btn" onclick="setLength(32)">32</button>
+                            <button type="button" class="preset-btn" onclick="setLength(64)">64</button>
+                            <button type="button" class="preset-btn" onclick="setLength(128)">128</button>
+                            <button type="button" class="preset-btn" onclick="setLength(256)">256</button>
+                            <button type="button" class="preset-btn" onclick="setLength(512)">512</button>
+                            <button type="button" class="preset-btn" onclick="setLength(1000)">1K</button>
+                            <button type="button" class="preset-btn" onclick="setLength(2500)">2.5K</button>
+                            <button type="button" class="preset-btn" onclick="setLength(5000)">5K</button>
+                        </div>
+                        <div class="length-info">Click presets or type any number (1-5000 characters)</div>
+                    </div>
+                </div>
+
+                <button id="createBtn" onclick="createRedirect()" disabled>
+                    🚀 Create Redirect
+                </button>
+
+                <div id="redirectResult"></div>
+            </div>
+
+            <div class="form-section">
+                <h2>📋 Your Redirects</h2>
+                <div id="redirectsList" class="loading">Loading redirects...</div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="form-section">
+                <h2>⚙️ Server Settings</h2>
+                
+                <div class="form-group">
+                    <label for="banRedirectUrl">🔀 Ban Redirect URL:</label>
+                    <input type="url" id="banRedirectUrl" placeholder="https://example.com/banned-page" required>
+                    <div class="settings-info">
+                        When someone tries to access an unauthorized redirect or a banned IP attempts access, 
+                        they will be redirected to this URL instead of getting an error page.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <label>🔀 Enable Ban Redirects:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableBanRedirect" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span id="banRedirectStatus">Enabled</span>
+                    </div>
+                    <div class="settings-info">
+                        When enabled, banned/unauthorized requests are redirected to your chosen URL. 
+                        When disabled, they get a "Forbidden" error page.
+                    </div>
+                </div>
+
+                <button id="saveSettingsBtn" onclick="saveSettings()" disabled>
+                    💾 Save Settings
+                </button>
+
+                <div id="settingsResult"></div>
+            </div>
         </div>
     </div>
 
@@ -427,14 +591,39 @@
 
         let isConnected = false;
         let redirects = [];
+        let domains = [];
         let serverSettings = {};
+        let serverIP = '';
 
         window.onload = function() {
-            console.log('🚀 Starting dashboard...');
+            console.log('🚀 Starting multi-domain dashboard...');
             testConnection();
             setupLengthValidation();
             setupSettingsToggle();
         };
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data for the tab
+            if (tabName === 'domains' && isConnected) {
+                loadDomains();
+            } else if (tabName === 'redirects' && isConnected) {
+                loadRedirects();
+            } else if (tabName === 'settings' && isConnected) {
+                loadSettings();
+            }
+        }
 
         function setupSettingsToggle() {
             const toggle = document.getElementById('enableBanRedirect');
@@ -451,14 +640,12 @@
             lengthInput.addEventListener('input', function() {
                 let value = parseInt(this.value);
                 
-                // Validate range
                 if (value < 1) {
                     this.value = 1;
                 } else if (value > 5000) {
                     this.value = 5000;
                 }
                 
-                // Update info text based on value
                 const info = document.querySelector('.length-info');
                 const currentValue = parseInt(this.value) || 8;
                 
@@ -479,39 +666,7 @@
         function setLength(length) {
             const lengthInput = document.getElementById('length');
             lengthInput.value = length;
-            lengthInput.dispatchEvent(new Event('input')); // Trigger validation
-        }
-
-        function shortenUrl(url, maxLength = 80) {
-            if (url.length <= maxLength) {
-                return url;
-            }
-            
-            const domain = url.split('/')[0] + '//' + url.split('/')[2];
-            const path = url.substring(domain.length);
-            
-            if (path.length > maxLength - domain.length - 3) {
-                const shortenedPath = path.substring(0, maxLength - domain.length - 6) + '...';
-                return domain + shortenedPath;
-            }
-            
-            return url;
-        }
-
-        function toggleFullUrl(redirectId) {
-            const shortEl = document.getElementById(`short-${redirectId}`);
-            const fullEl = document.getElementById(`full-${redirectId}`);
-            const toggleEl = document.getElementById(`toggle-${redirectId}`);
-            
-            if (fullEl.style.display === 'none') {
-                shortEl.style.display = 'none';
-                fullEl.style.display = 'block';
-                toggleEl.textContent = 'Show Less';
-            } else {
-                shortEl.style.display = 'block';
-                fullEl.style.display = 'none';
-                toggleEl.textContent = 'Show Full URL';
-            }
+            lengthInput.dispatchEvent(new Event('input'));
         }
 
         async function testConnection() {
@@ -529,18 +684,23 @@
                 if (response.ok) {
                     const config = await response.json();
                     serverSettings = config.settings || {};
+                    serverIP = config.serverIP || 'Unknown';
                     
                     isConnected = true;
-                    statusEl.textContent = '✅ Connected to maxforums.co successfully!';
+                    statusEl.textContent = '✅ Connected to multi-domain server successfully!';
                     statusEl.className = 'status connected';
+                    
+                    // Enable UI
+                    document.getElementById('addDomainBtn').disabled = false;
                     document.getElementById('createBtn').disabled = false;
                     document.getElementById('saveSettingsBtn').disabled = false;
                     document.getElementById('statsSection').style.display = 'flex';
-                    document.getElementById('settingsSection').style.display = 'block';
+                    document.getElementById('tabsSection').style.display = 'flex';
                     
-                    console.log('✅ Connection successful!');
-                    await loadSettings();
+                    console.log('✅ Connection successful! Server IP:', serverIP);
+                    await loadDomains();
                     await loadRedirects();
+                    await loadSettings();
                     await loadStats();
                 } else if (response.status === 401) {
                     throw new Error('❌ Invalid API key - please check your configuration');
@@ -551,24 +711,261 @@
                 isConnected = false;
                 statusEl.textContent = `❌ Connection failed: ${error.message}`;
                 statusEl.className = 'status disconnected';
-                document.getElementById('createBtn').disabled = true;
-                document.getElementById('saveSettingsBtn').disabled = true;
                 
                 console.error('❌ Connection error:', error);
+            }
+        }
+
+        async function loadDomains() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/domains`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                domains = await response.json();
+                displayDomains();
+                updateDomainDropdown();
+            } catch (error) {
+                document.getElementById('domainsList').innerHTML = 
+                    `<div class="error">Failed to load domains: ${error.message}</div>`;
+            }
+        }
+
+        function displayDomains() {
+            const list = document.getElementById('domainsList');
+            
+            if (domains.length === 0) {
+                list.innerHTML = '<div class="loading">📭 No domains yet. Add your first domain above!</div>';
+                return;
+            }
+
+            list.innerHTML = domains.map(domain => {
+                const addedDate = new Date(domain.added).toLocaleDateString();
+                const verifiedDate = domain.verified ? new Date(domain.verified).toLocaleDateString() : 'Not verified';
                 
-                document.getElementById('result').innerHTML = `
-                    <div class="error">
-                        <strong>Connection Failed!</strong><br>
-                        ${error.message}<br><br>
-                        <strong>Please check:</strong><br>
-                        1. Your API key matches the one in your maxforums.co server<br>
-                        2. Your maxforums.co server is running<br>
-                        3. CORS is properly configured<br><br>
-                        <strong>Current settings:</strong><br>
-                        Server: ${CONFIG.serverUrl}<br>
-                        API Key: ${CONFIG.apiKey.substring(0, 8)}...
+                return `
+                    <div class="domain-item ${domain.status}">
+                        <div class="domain-name">
+                            ${domain.domain}
+                            <span class="domain-status ${domain.status}">${domain.status.toUpperCase()}</span>
+                            ${domain.isDefault ? '<span class="domain-status verified">DEFAULT</span>' : ''}
+                        </div>
+                        <div class="domain-stats">
+                            🔗 ${domain.redirectCount || 0} redirects | 📅 Added: ${addedDate} | 
+                            ✅ Verified: ${verifiedDate}
+                        </div>
+                        ${domain.status === 'pending' ? getDNSInstructions(domain.domain) : ''}
+                        ${domain.status === 'failed' ? getFailedInstructions(domain.domain) : ''}
+                        <div style="margin-top: 10px;">
+                            ${domain.status === 'pending' || domain.status === 'failed' ? 
+                                `<button onclick="verifyDomain('${domain.domain}')" class="btn-warning btn-small">🔍 Verify DNS</button>` : 
+                                `<button onclick="testDomain('${domain.domain}')" class="btn-success btn-small">🔗 Test Domain</button>`
+                            }
+                            ${!domain.isDefault ? 
+                                `<button onclick="deleteDomain('${domain.domain}')" class="btn-danger btn-small">🗑️ Delete</button>` : ''
+                            }
+                        </div>
+                        <div id="verifyResult-${domain.domain.replace('.', '-')}"></div>
                     </div>
                 `;
+            }).join('');
+        }
+
+        function getDNSInstructions(domain) {
+            return `
+                <div class="dns-instructions">
+                    <strong>📋 DNS Setup Instructions:</strong>
+                    <div class="dns-record">
+                        <strong>A Record:</strong><br>
+                        Name: <code>@</code> or <code>${domain}</code><br>
+                        Value: <code>${serverIP}</code><br>
+                        TTL: <code>300</code> (or default)
+                    </div>
+                    <div class="dns-record">
+                        <strong>CNAME Record (optional but recommended):</strong><br>
+                        Name: <code>www</code><br>
+                        Value: <code>${domain}</code><br>
+                        TTL: <code>300</code> (or default)
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+                        💡 Add these records in your domain registrar's DNS settings (GoDaddy, Namecheap, Cloudflare, etc.)
+                    </div>
+                </div>
+            `;
+        }
+
+        function getFailedInstructions(domain) {
+            return `
+                <div class="dns-instructions">
+                    <strong>❌ DNS Verification Failed</strong>
+                    <div style="margin: 10px 0; color: #ff6b6b;">
+                        Your domain is not pointing to our server yet. Please check:
+                    </div>
+                    <div class="dns-record">
+                        <strong>Required A Record:</strong><br>
+                        Name: <code>${domain}</code><br>
+                        Should point to: <code>${serverIP}</code>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+                        💡 DNS changes can take up to 24 hours to propagate. Wait a bit and try verification again.
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateDomainDropdown() {
+            const select = document.getElementById('redirectDomain');
+            const verifiedDomains = domains.filter(d => d.status === 'verified');
+            
+            if (verifiedDomains.length === 0) {
+                select.innerHTML = '<option value="">No verified domains available</option>';
+                return;
+            }
+            
+            select.innerHTML = verifiedDomains.map(domain => 
+                `<option value="${domain.domain}" ${domain.isDefault ? 'selected' : ''}>${domain.domain}${domain.isDefault ? ' (default)' : ''}</option>`
+            ).join('');
+        }
+
+        async function addDomain() {
+            if (!isConnected) {
+                alert('❌ Not connected to server');
+                return;
+            }
+
+            const domain = document.getElementById('newDomain').value.trim().toLowerCase();
+
+            if (!domain) {
+                showDomainResult('❌ Please enter a domain name', 'error');
+                return;
+            }
+
+            // Basic domain validation
+            const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}\.?)+$/;
+            if (!domainRegex.test(domain)) {
+                showDomainResult('❌ Please enter a valid domain (e.g., example.com)', 'error');
+                return;
+            }
+
+            const addBtn = document.getElementById('addDomainBtn');
+            addBtn.disabled = true;
+            addBtn.textContent = '⏳ Adding...';
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/domains`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({ domain: domain })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showDomainResult(`
+                        <strong>🎉 Domain Added!</strong><br>
+                        Domain: ${domain}<br>
+                        Status: Pending DNS verification<br><br>
+                        <strong>Next Steps:</strong><br>
+                        1. Add the DNS records shown below<br>
+                        2. Wait 5-10 minutes for DNS propagation<br>
+                        3. Click "Verify DNS" button
+                    `, 'success');
+                    
+                    document.getElementById('newDomain').value = '';
+                    await loadDomains();
+                    await loadStats();
+                } else {
+                    throw new Error(data.error || 'Failed to add domain');
+                }
+            } catch (error) {
+                showDomainResult(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = '🌐 Add Domain';
+            }
+        }
+
+        async function verifyDomain(domain) {
+            const resultId = `verifyResult-${domain.replace('.', '-')}`;
+            const resultEl = document.getElementById(resultId);
+            
+            resultEl.innerHTML = '<div class="loading">🔍 Verifying DNS configuration...</div>';
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/domains/${encodeURIComponent(domain)}/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.verified) {
+                    resultEl.innerHTML = `
+                        <div class="verification-result success">
+                            <strong>✅ Domain Verified Successfully!</strong><br>
+                            A Record: ${data.verification.aRecord}<br>
+                            CNAME Record: ${data.verification.cname}<br>
+                            Domain is now ready for redirects!
+                        </div>
+                    `;
+                    
+                    await loadDomains();
+                    await loadStats();
+                } else {
+                    resultEl.innerHTML = `
+                        <div class="verification-result failed">
+                            <strong>❌ DNS Verification Failed</strong><br>
+                            A Record: ${data.verification.aRecord}<br>
+                            CNAME Record: ${data.verification.cname}<br><br>
+                            Please check your DNS settings and try again in a few minutes.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultEl.innerHTML = `
+                    <div class="verification-result failed">
+                        <strong>❌ Verification Error</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testDomain(domain) {
+            window.open(`https://${domain}`, '_blank');
+        }
+
+        async function deleteDomain(domain) {
+            if (!confirm(`🗑️ Are you sure you want to delete ${domain}?\n\nThis will also delete all redirects on this domain!`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/domains/${encodeURIComponent(domain)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showDomainResult(`✅ Domain ${domain} deleted successfully!`, 'success');
+                    await loadDomains();
+                    await loadStats();
+                } else {
+                    throw new Error(data.error || 'Failed to delete domain');
+                }
+            } catch (error) {
+                showDomainResult(`❌ Error deleting domain: ${error.message}`, 'error');
             }
         }
 
@@ -580,17 +977,12 @@
                     }
                 });
 
-                if (response.ok) {
-                    serverSettings = await response.json();
-                    
-                    // Update UI
-                    document.getElementById('banRedirectUrl').value = serverSettings.banRedirectUrl || '';
-                    document.getElementById('enableBanRedirect').checked = serverSettings.enableBanRedirect !== false;
-                    document.getElementById('banRedirectStatus').textContent = 
-                        serverSettings.enableBanRedirect !== false ? 'Enabled' : 'Disabled';
-                    
-                    console.log('⚙️ Settings loaded:', serverSettings);
-                }
+                serverSettings = await response.json();
+                
+                document.getElementById('banRedirectUrl').value = serverSettings.banRedirectUrl || '';
+                document.getElementById('enableBanRedirect').checked = serverSettings.enableBanRedirect !== false;
+                document.getElementById('banRedirectStatus').textContent = 
+                    serverSettings.enableBanRedirect !== false ? 'Enabled' : 'Disabled';
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
@@ -643,8 +1035,6 @@
                         Ban Redirect URL: ${banRedirectUrl}<br>
                         Redirect Enabled: ${enableBanRedirect ? 'Yes' : 'No'}
                     `, 'success');
-                    
-                    console.log('⚙️ Settings saved:', serverSettings);
                 } else {
                     throw new Error(data.error || 'Failed to save settings');
                 }
@@ -653,17 +1043,6 @@
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 Save Settings';
-            }
-        }
-
-        function showSettingsResult(message, type) {
-            const result = document.getElementById('settingsResult');
-            result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
-            
-            if (type === 'success') {
-                setTimeout(() => {
-                    result.innerHTML = '';
-                }, 3000);
             }
         }
 
@@ -677,22 +1056,27 @@
             const customPath = document.getElementById('customPath').value.trim();
             const prefix = document.getElementById('prefix').value;
             const length = parseInt(document.getElementById('length').value) || 8;
+            const domain = document.getElementById('redirectDomain').value;
 
             if (!destinationUrl) {
-                showResult('❌ Please enter a destination URL', 'error');
+                showRedirectResult('❌ Please enter a destination URL', 'error');
                 return;
             }
 
-            // Validate length
+            if (!domain) {
+                showRedirectResult('❌ Please select a verified domain', 'error');
+                return;
+            }
+
             if (length < 1 || length > 5000) {
-                showResult('❌ Length must be between 1 and 5000 characters', 'error');
+                showRedirectResult('❌ Length must be between 1 and 5000 characters', 'error');
                 return;
             }
 
             try {
                 new URL(destinationUrl);
             } catch {
-                showResult('❌ Please enter a valid URL (include https://)', 'error');
+                showRedirectResult('❌ Please enter a valid URL (include https://)', 'error');
                 return;
             }
 
@@ -701,8 +1085,6 @@
             createBtn.textContent = '⏳ Creating...';
 
             try {
-                console.log('📝 Creating redirect with length:', length);
-                
                 const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
                     method: 'POST',
                     headers: {
@@ -713,26 +1095,27 @@
                         destinationUrl: destinationUrl,
                         customPath: customPath || undefined,
                         prefix: prefix || undefined,
-                        length: length
+                        length: length,
+                        domain: domain
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    const shortUrl = `${CONFIG.serverUrl}/${data.fullPath}`;
-                    const displayUrl = shortenUrl(shortUrl, 60);
+                    const shortUrl = `https://${data.domain}/${data.fullPath}`;
                     
-                    showResult(`
+                    showRedirectResult(`
                         <strong>🎉 Success!</strong><br>
                         <div style="margin: 10px 0;">
                             <strong>Your short link (${data.length} characters):</strong><br>
-                            <div class="redirect-url">${displayUrl}${shortUrl.length > 60 ? ' <span style="color:#999;">(truncated for display)</span>' : ''}</div>
+                            <div class="redirect-url">${shortUrl}</div>
                         </div>
-                        <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Full Link</button>
+                        <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
                         <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
                     `, 'success');
                     
+                    // Clear form
                     document.getElementById('destinationUrl').value = '';
                     document.getElementById('customPath').value = '';
                     document.getElementById('prefix').value = '';
@@ -740,11 +1123,12 @@
                     
                     await loadRedirects();
                     await loadStats();
+                    await loadDomains(); // Update redirect counts
                 } else {
                     throw new Error(data.error || 'Failed to create redirect');
                 }
             } catch (error) {
-                showResult(`❌ Error: ${error.message}`, 'error');
+                showRedirectResult(`❌ Error: ${error.message}`, 'error');
             } finally {
                 createBtn.disabled = false;
                 createBtn.textContent = '🚀 Create Redirect';
@@ -767,24 +1151,6 @@
             }
         }
 
-        async function loadStats() {
-            try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/stats`, {
-                    headers: {
-                        'X-API-Key': CONFIG.apiKey
-                    }
-                });
-
-                const stats = await response.json();
-                document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
-                document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
-                document.getElementById('activeRedirects').textContent = stats.activeRedirects || 0;
-                document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        }
-
         function displayRedirects() {
             const list = document.getElementById('redirectsList');
             
@@ -798,26 +1164,20 @@
             );
 
             list.innerHTML = sortedRedirects.map(redirect => {
-                const shortUrl = `${CONFIG.serverUrl}/${redirect.fullPath}`;
-                const displayUrl = shortenUrl(shortUrl, 80);
+                const shortUrl = `https://${redirect.domain}/${redirect.fullPath}`;
                 const createdDate = new Date(redirect.created).toLocaleDateString();
-                const needsToggle = shortUrl.length > 80;
                 
                 return `
                     <div class="redirect-item">
-                        <div class="redirect-url">
-                            <span id="short-${redirect.id}" class="redirect-url-short">${displayUrl}</span>
-                            <div id="full-${redirect.id}" class="redirect-url-full" style="display: none;">${shortUrl}</div>
-                            ${needsToggle ? `<span id="toggle-${redirect.id}" class="url-toggle" onclick="toggleFullUrl(${redirect.id})">Show Full URL</span>` : ''}
-                        </div>
+                        <div class="redirect-url">${shortUrl}</div>
                         <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
                         <div class="redirect-stats">
-                            👆 ${redirect.clicks} clicks | 📅 Created: ${createdDate} | 
+                            👆 ${redirect.clicks} clicks | 🌐 ${redirect.domain} | 📅 Created: ${createdDate} | 
                             📏 ${redirect.length || 8} chars | 
                             ${redirect.active ? '✅ Active' : '❌ Inactive'}
                         </div>
                         <div style="margin-top: 10px;">
-                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Full URL</button>
+                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy</button>
                             <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
                             <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
                                 ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
@@ -827,6 +1187,25 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/stats`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const stats = await response.json();
+                document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
+                document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
+                document.getElementById('totalDomains').textContent = stats.totalDomains || 0;
+                document.getElementById('verifiedDomains').textContent = stats.verifiedDomains || 0;
+                document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
         }
 
         async function deleteRedirect(fullPath) {
@@ -841,14 +1220,15 @@
                 });
 
                 if (response.ok) {
-                    showResult('✅ Redirect deleted successfully!', 'success');
+                    showRedirectResult('✅ Redirect deleted successfully!', 'success');
                     await loadRedirects();
                     await loadStats();
+                    await loadDomains();
                 } else {
                     throw new Error('Failed to delete redirect');
                 }
             } catch (error) {
-                showResult(`❌ Error deleting redirect: ${error.message}`, 'error');
+                showRedirectResult(`❌ Error deleting redirect: ${error.message}`, 'error');
             }
         }
 
@@ -867,20 +1247,20 @@
 
                 if (response.ok) {
                     const action = !currentState ? 'activated' : 'deactivated';
-                    showResult(`✅ Redirect ${action} successfully!`, 'success');
+                    showRedirectResult(`✅ Redirect ${action} successfully!`, 'success');
                     await loadRedirects();
                     await loadStats();
                 } else {
                     throw new Error('Failed to update redirect');
                 }
             } catch (error) {
-                showResult(`❌ Error updating redirect: ${error.message}`, 'error');
+                showRedirectResult(`❌ Error updating redirect: ${error.message}`, 'error');
             }
         }
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                showResult('📋 Full URL copied to clipboard!', 'success');
+                showRedirectResult('📋 URL copied to clipboard!', 'success');
             }).catch(() => {
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
@@ -888,13 +1268,35 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showResult('📋 Full URL copied to clipboard!', 'success');
+                showRedirectResult('📋 URL copied to clipboard!', 'success');
             });
         }
 
-        function showResult(message, type) {
-            const result = document.getElementById('result');
-            result.innerHTML = `<div class="${type}">${message}</div>`;
+        function showDomainResult(message, type) {
+            const result = document.getElementById('domainResult');
+            result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        function showRedirectResult(message, type) {
+            const result = document.getElementById('redirectResult');
+            result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        function showSettingsResult(message, type) {
+            const result = document.getElementById('settingsResult');
+            result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
             
             if (type === 'success') {
                 setTimeout(() => {
