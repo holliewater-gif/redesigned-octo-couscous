@@ -216,6 +216,64 @@
         .domain-item.failed {
             border-left-color: #f44336;
         }
+        
+        /* Enhanced URL display styles */
+        .redirect-url-container {
+            margin: 10px 0;
+            padding: 12px;
+            background: #222;
+            border-radius: 6px;
+            border: 1px solid #555;
+        }
+        .redirect-url-short {
+            color: #4caf50;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            display: block;
+            word-break: break-all;
+        }
+        .redirect-url-full {
+            color: #4caf50;
+            font-family: monospace;
+            font-size: 12px;
+            background: #1a1a1a;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            word-break: break-all;
+            border: 1px solid #666;
+            display: none;
+        }
+        .url-toggle {
+            color: #667eea;
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        .url-toggle:hover {
+            color: #5a6fd8;
+        }
+        .url-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .copy-feedback {
+            color: #4caf50;
+            font-size: 11px;
+            margin-left: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .copy-feedback.show {
+            opacity: 1;
+        }
+        
         .redirect-url {
             color: #4caf50;
             font-family: monospace;
@@ -279,26 +337,6 @@
             background: #4d1e1e;
             color: #ff6b6b;
             border-left: 4px solid #f44336;
-        }
-        .redirect-url-short {
-            display: block;
-        }
-        .redirect-url-full {
-            display: none;
-            word-break: break-all;
-            background: #222;
-            padding: 8px;
-            border-radius: 4px;
-            margin-top: 5px;
-            border: 1px solid #555;
-            font-size: 12px;
-        }
-        .url-toggle {
-            color: #667eea;
-            font-size: 11px;
-            cursor: pointer;
-            text-decoration: underline;
-            margin-left: 10px;
         }
         .redirect-destination {
             color: #ccc;
@@ -386,6 +424,9 @@
             }
             .length-presets {
                 gap: 3px;
+            }
+            .url-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -669,6 +710,87 @@
             lengthInput.dispatchEvent(new Event('input'));
         }
 
+        // Smart URL truncation function
+        function truncateUrl(url, maxLength = 80) {
+            if (url.length <= maxLength) {
+                return url;
+            }
+            
+            const parts = url.split('/');
+            const domain = parts[0] + '//' + parts[2];
+            const path = parts.slice(3).join('/');
+            
+            if (domain.length >= maxLength - 10) {
+                return url.substring(0, maxLength - 3) + '...';
+            }
+            
+            const maxPathLength = maxLength - domain.length - 4; // -4 for "..." and "/"
+            if (path.length > maxPathLength) {
+                const truncatedPath = path.substring(0, maxPathLength - 3) + '...';
+                return domain + '/' + truncatedPath;
+            }
+            
+            return url;
+        }
+
+        // Toggle full URL display
+        function toggleFullUrl(uniqueId) {
+            const fullUrlDiv = document.getElementById(`full-${uniqueId}`);
+            const toggleText = document.getElementById(`toggle-text-${uniqueId}`);
+            
+            if (fullUrlDiv.style.display === 'none' || fullUrlDiv.style.display === '') {
+                fullUrlDiv.style.display = 'block';
+                toggleText.textContent = 'Hide full URL';
+            } else {
+                fullUrlDiv.style.display = 'none';
+                toggleText.textContent = 'Show full URL';
+            }
+        }
+
+        // Enhanced copy function with visual feedback
+        function copyToClipboard(text, feedbackId = null) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyFeedback(feedbackId);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showCopyFeedback(feedbackId);
+            });
+        }
+
+        // Copy as Markdown format
+        function copyAsMarkdown(shortUrl, destinationUrl) {
+            const markdownText = `[${truncateUrl(shortUrl, 50)}](${shortUrl})`;
+            copyToClipboard(markdownText);
+            showRedirectResult('📋 Markdown format copied to clipboard!', 'success');
+        }
+
+        // Copy as HTML format
+        function copyAsHTML(shortUrl, destinationUrl) {
+            const htmlText = `<a href="${shortUrl}">${truncateUrl(shortUrl, 50)}</a>`;
+            copyToClipboard(htmlText);
+            showRedirectResult('📋 HTML format copied to clipboard!', 'success');
+        }
+
+        // Show copy feedback
+        function showCopyFeedback(feedbackId) {
+            if (feedbackId) {
+                const feedback = document.getElementById(`copy-feedback-${feedbackId}`);
+                if (feedback) {
+                    feedback.classList.add('show');
+                    setTimeout(() => {
+                        feedback.classList.remove('show');
+                    }, 2000);
+                }
+            }
+            showRedirectResult('📋 URL copied to clipboard!', 'success');
+        }
+
         async function testConnection() {
             const statusEl = document.getElementById('status');
             
@@ -791,6 +913,7 @@
                     </div>
                     <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
                         💡 Add these records in your domain registrar's DNS settings (GoDaddy, Namecheap, Cloudflare, etc.)
+                        <br><strong>⚠️ IMPORTANT:</strong> If using Cloudflare, turn OFF proxy (orange cloud → gray cloud) before verification!
                     </div>
                 </div>
             `;
@@ -810,6 +933,7 @@
                     </div>
                     <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
                         💡 DNS changes can take up to 24 hours to propagate. Wait a bit and try verification again.
+                        <br><strong>⚠️ If using Cloudflare:</strong> Make sure proxy is OFF (gray cloud, not orange)
                     </div>
                 </div>
             `;
@@ -872,8 +996,10 @@
                         Status: Pending DNS verification<br><br>
                         <strong>Next Steps:</strong><br>
                         1. Add the DNS records shown below<br>
-                        2. Wait 5-10 minutes for DNS propagation<br>
-                        3. Click "Verify DNS" button
+                        2. If using Cloudflare, turn OFF proxy (orange → gray cloud)<br>
+                        3. Wait 5-10 minutes for DNS propagation<br>
+                        4. Click "Verify DNS" button<br>
+                        5. After verification, turn Cloudflare proxy back ON
                     `, 'success');
                     
                     document.getElementById('newDomain').value = '';
@@ -912,21 +1038,47 @@
                             <strong>✅ Domain Verified Successfully!</strong><br>
                             A Record: ${data.verification.aRecord}<br>
                             CNAME Record: ${data.verification.cname}<br>
-                            Domain is now ready for redirects!
+                            Domain is now ready for redirects!<br><br>
+                            <strong>✨ You can now turn Cloudflare proxy back ON if desired!</strong>
                         </div>
                     `;
                     
                     await loadDomains();
                     await loadStats();
                 } else {
-                    resultEl.innerHTML = `
+                    const verification = data.verification || {};
+                    const errors = verification.details?.errors || [];
+                    const cloudflareDetected = verification.details?.cloudflareDetected;
+                    
+                    let errorMessage = `
                         <div class="verification-result failed">
                             <strong>❌ DNS Verification Failed</strong><br>
-                            A Record: ${data.verification.aRecord}<br>
-                            CNAME Record: ${data.verification.cname}<br><br>
+                            A Record: ${verification.aRecord || '❌ Failed'}<br>
+                            CNAME Record: ${verification.cname || '⚠️ Optional'}<br><br>
+                    `;
+                    
+                    if (cloudflareDetected) {
+                        errorMessage += `
+                            <strong>🟠 Cloudflare Proxy Detected!</strong><br>
+                            Please turn OFF the orange cloud (proxy) in Cloudflare DNS settings.<br>
+                            Change from "Proxied" to "DNS only" (gray cloud).<br><br>
+                        `;
+                    }
+                    
+                    if (errors.length > 0) {
+                        errorMessage += `<strong>Issues found:</strong><br>`;
+                        errors.forEach(error => {
+                            errorMessage += `• ${error}<br>`;
+                        });
+                        errorMessage += `<br>`;
+                    }
+                    
+                    errorMessage += `
                             Please check your DNS settings and try again in a few minutes.
                         </div>
                     `;
+                    
+                    resultEl.innerHTML = errorMessage;
                 }
             } catch (error) {
                 resultEl.innerHTML = `
@@ -1109,10 +1261,11 @@
                         <strong>🎉 Success!</strong><br>
                         <div style="margin: 10px 0;">
                             <strong>Your short link (${data.length} characters):</strong><br>
-                            <div class="redirect-url">${shortUrl}</div>
+                            <div class="redirect-url" onclick="copyToClipboard('${shortUrl}')" title="Click to copy">${truncateUrl(shortUrl, 60)}</div>
                         </div>
                         <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy Link</button>
                         <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test Link</button>
+                        <button onclick="copyAsMarkdown('${shortUrl}', '${destinationUrl}')" class="btn-small">📝 Copy as Markdown</button>
                     `, 'success');
                     
                     // Clear form
@@ -1151,6 +1304,7 @@
             }
         }
 
+        // Enhanced display for redirects with smart URL handling
         function displayRedirects() {
             const list = document.getElementById('redirectsList');
             
@@ -1163,13 +1317,37 @@
                 new Date(b.created) - new Date(a.created)
             );
 
-            list.innerHTML = sortedRedirects.map(redirect => {
+            list.innerHTML = sortedRedirects.map((redirect, index) => {
                 const shortUrl = `https://${redirect.domain}/${redirect.fullPath}`;
+                const truncatedUrl = truncateUrl(shortUrl, 80);
+                const isLongUrl = shortUrl.length > 80;
                 const createdDate = new Date(redirect.created).toLocaleDateString();
+                const uniqueId = `redirect-${index}`;
                 
                 return `
                     <div class="redirect-item">
-                        <div class="redirect-url">${shortUrl}</div>
+                        <div class="redirect-url-container">
+                            <div class="redirect-url-short" onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" title="Click to copy">
+                                🔗 ${truncatedUrl}
+                            </div>
+                            ${isLongUrl ? `
+                                <div class="redirect-url-full" id="full-${uniqueId}">
+                                    ${shortUrl}
+                                </div>
+                                <div class="url-toggle" onclick="toggleFullUrl('${uniqueId}')">
+                                    <span id="toggle-text-${uniqueId}">Show full URL</span>
+                                </div>
+                            ` : ''}
+                            <span class="copy-feedback" id="copy-feedback-${uniqueId}">📋 Copied!</span>
+                            
+                            <div class="url-actions">
+                                <button onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" class="btn-success btn-small">📋 Copy Link</button>
+                                <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
+                                <button onclick="copyAsMarkdown('${shortUrl}', '${redirect.destinationUrl}')" class="btn-small">📝 Copy as Markdown</button>
+                                <button onclick="copyAsHTML('${shortUrl}', '${redirect.destinationUrl}')" class="btn-small">🔗 Copy as HTML</button>
+                            </div>
+                        </div>
+                        
                         <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
                         <div class="redirect-stats">
                             👆 ${redirect.clicks} clicks | 🌐 ${redirect.domain} | 📅 Created: ${createdDate} | 
@@ -1177,8 +1355,6 @@
                             ${redirect.active ? '✅ Active' : '❌ Inactive'}
                         </div>
                         <div style="margin-top: 10px;">
-                            <button onclick="copyToClipboard('${shortUrl}')" class="btn-success btn-small">📋 Copy</button>
-                            <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
                             <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
                                 ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
                             </button>
@@ -1256,20 +1432,6 @@
             } catch (error) {
                 showRedirectResult(`❌ Error updating redirect: ${error.message}`, 'error');
             }
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showRedirectResult('📋 URL copied to clipboard!', 'success');
-            }).catch(() => {
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showRedirectResult('📋 URL copied to clipboard!', 'success');
-            });
         }
 
         function showDomainResult(message, type) {
