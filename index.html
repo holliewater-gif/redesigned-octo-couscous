@@ -70,6 +70,50 @@
             border-color: #667eea;
             outline: none;
         }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
         .length-presets {
             margin-top: 8px;
             display: flex;
@@ -121,6 +165,9 @@
         }
         .btn-success {
             background: #4caf50;
+        }
+        .btn-warning {
+            background: #ff9800;
         }
         .redirect-item {
             background: #333;
@@ -208,6 +255,14 @@
             font-size: 12px;
             margin-top: 5px;
         }
+        .settings-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            padding: 8px;
+            background: #2a2a44;
+            border-radius: 4px;
+        }
         @media (max-width: 600px) {
             .form-row {
                 flex-direction: column;
@@ -245,6 +300,45 @@
                 <div class="stat-number" id="activeRedirects">0</div>
                 <div class="stat-label">Active</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-number" id="bannedIPs">0</div>
+                <div class="stat-label">Banned IPs</div>
+            </div>
+        </div>
+
+        <!-- NEW: Server Settings Section -->
+        <div class="form-section" id="settingsSection" style="display: none;">
+            <h2>⚙️ Server Settings</h2>
+            
+            <div class="form-group">
+                <label for="banRedirectUrl">🔀 Ban Redirect URL:</label>
+                <input type="url" id="banRedirectUrl" placeholder="https://example.com/banned-page" required>
+                <div class="settings-info">
+                    When someone tries to access an unauthorized redirect or a banned IP attempts access, 
+                    they will be redirected to this URL instead of getting an error page.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-switch">
+                    <label>🔀 Enable Ban Redirects:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="enableBanRedirect" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span id="banRedirectStatus">Enabled</span>
+                </div>
+                <div class="settings-info">
+                    When enabled, banned/unauthorized requests are redirected to your chosen URL. 
+                    When disabled, they get a "Forbidden" error page.
+                </div>
+            </div>
+
+            <button id="saveSettingsBtn" onclick="saveSettings()" disabled>
+                💾 Save Settings
+            </button>
+
+            <div id="settingsResult"></div>
         </div>
 
         <div class="form-section">
@@ -333,12 +427,23 @@
 
         let isConnected = false;
         let redirects = [];
+        let serverSettings = {};
 
         window.onload = function() {
             console.log('🚀 Starting dashboard...');
             testConnection();
             setupLengthValidation();
+            setupSettingsToggle();
         };
+
+        function setupSettingsToggle() {
+            const toggle = document.getElementById('enableBanRedirect');
+            const status = document.getElementById('banRedirectStatus');
+            
+            toggle.addEventListener('change', function() {
+                status.textContent = this.checked ? 'Enabled' : 'Disabled';
+            });
+        }
 
         function setupLengthValidation() {
             const lengthInput = document.getElementById('length');
@@ -422,13 +527,19 @@
                 });
 
                 if (response.ok) {
+                    const config = await response.json();
+                    serverSettings = config.settings || {};
+                    
                     isConnected = true;
                     statusEl.textContent = '✅ Connected to maxforums.co successfully!';
                     statusEl.className = 'status connected';
                     document.getElementById('createBtn').disabled = false;
+                    document.getElementById('saveSettingsBtn').disabled = false;
                     document.getElementById('statsSection').style.display = 'flex';
+                    document.getElementById('settingsSection').style.display = 'block';
                     
                     console.log('✅ Connection successful!');
+                    await loadSettings();
                     await loadRedirects();
                     await loadStats();
                 } else if (response.status === 401) {
@@ -441,6 +552,7 @@
                 statusEl.textContent = `❌ Connection failed: ${error.message}`;
                 statusEl.className = 'status disconnected';
                 document.getElementById('createBtn').disabled = true;
+                document.getElementById('saveSettingsBtn').disabled = true;
                 
                 console.error('❌ Connection error:', error);
                 
@@ -457,6 +569,101 @@
                         API Key: ${CONFIG.apiKey.substring(0, 8)}...
                     </div>
                 `;
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    serverSettings = await response.json();
+                    
+                    // Update UI
+                    document.getElementById('banRedirectUrl').value = serverSettings.banRedirectUrl || '';
+                    document.getElementById('enableBanRedirect').checked = serverSettings.enableBanRedirect !== false;
+                    document.getElementById('banRedirectStatus').textContent = 
+                        serverSettings.enableBanRedirect !== false ? 'Enabled' : 'Disabled';
+                    
+                    console.log('⚙️ Settings loaded:', serverSettings);
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        async function saveSettings() {
+            if (!isConnected) {
+                alert('❌ Not connected to server');
+                return;
+            }
+
+            const banRedirectUrl = document.getElementById('banRedirectUrl').value.trim();
+            const enableBanRedirect = document.getElementById('enableBanRedirect').checked;
+
+            if (!banRedirectUrl) {
+                showSettingsResult('❌ Please enter a ban redirect URL', 'error');
+                return;
+            }
+
+            try {
+                new URL(banRedirectUrl);
+            } catch {
+                showSettingsResult('❌ Please enter a valid URL (include https://)', 'error');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveSettingsBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Saving...';
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        banRedirectUrl: banRedirectUrl,
+                        enableBanRedirect: enableBanRedirect
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    serverSettings = data;
+                    showSettingsResult(`
+                        <strong>💾 Settings Saved!</strong><br>
+                        Ban Redirect URL: ${banRedirectUrl}<br>
+                        Redirect Enabled: ${enableBanRedirect ? 'Yes' : 'No'}
+                    `, 'success');
+                    
+                    console.log('⚙️ Settings saved:', serverSettings);
+                } else {
+                    throw new Error(data.error || 'Failed to save settings');
+                }
+            } catch (error) {
+                showSettingsResult(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Settings';
+            }
+        }
+
+        function showSettingsResult(message, type) {
+            const result = document.getElementById('settingsResult');
+            result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
             }
         }
 
@@ -572,6 +779,7 @@
                 document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
                 document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
                 document.getElementById('activeRedirects').textContent = stats.activeRedirects || 0;
+                document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
             } catch (error) {
                 console.error('Failed to load stats:', error);
             }
