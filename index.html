@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Domain Redirect Dashboard</title>
+    <title>Multi-Domain Redirect Dashboard - Advanced Protection</title>
     <style>
         body {
             background: #0f0f23;
@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background: #1a1a2e;
             border-radius: 8px;
@@ -38,6 +38,7 @@
             display: flex;
             margin-bottom: 20px;
             border-bottom: 2px solid #333;
+            flex-wrap: wrap;
         }
         .tab {
             padding: 12px 20px;
@@ -47,6 +48,7 @@
             cursor: pointer;
             border-radius: 8px 8px 0 0;
             margin-right: 5px;
+            margin-bottom: 5px;
             font-size: 14px;
             transition: all 0.3s;
         }
@@ -105,6 +107,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 10px;
         }
         .switch {
             position: relative;
@@ -199,6 +202,12 @@
         }
         .btn-warning {
             background: #ff9800;
+        }
+        .btn-purple {
+            background: #9c27b0;
+        }
+        .btn-cyan {
+            background: #00bcd4;
         }
         .redirect-item, .domain-item, .ip-item {
             background: #333;
@@ -374,18 +383,16 @@
             font-style: italic;
         }
         .stats {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         .stat-card {
             background: #232344;
             padding: 15px;
             border-radius: 8px;
             text-align: center;
-            flex: 1;
-            min-width: 140px;
         }
         .stat-number {
             font-size: 24px;
@@ -406,7 +413,7 @@
             border-radius: 4px;
         }
         
-        /* VPN-specific styles */
+        /* Threat Protection specific styles */
         .ip-list {
             max-height: 300px;
             overflow-y: auto;
@@ -435,13 +442,21 @@
             color: #ff6b6b;
             font-weight: bold;
         }
-        .vpn-status {
-            background: #ff6b6b;
-            color: white;
+        .threat-status {
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 10px;
             margin-left: 10px;
+            color: white;
+        }
+        .threat-status.vpn {
+            background: #ff6b6b;
+        }
+        .threat-status.proxy {
+            background: #ff9800;
+        }
+        .threat-status.crawler {
+            background: #9c27b0;
         }
         .clear-all-btn {
             background: #ff9800;
@@ -450,8 +465,53 @@
         .clear-all-btn:hover {
             background: #f57c00;
         }
+        .protection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .protection-card {
+            background: #232344;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .protection-card.vpn {
+            border-left-color: #ff6b6b;
+        }
+        .protection-card.proxy {
+            border-left-color: #ff9800;
+        }
+        .protection-card.crawler {
+            border-left-color: #9c27b0;
+        }
+        .protection-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .protection-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-badge.enabled {
+            background: #4caf50;
+            color: white;
+        }
+        .status-badge.disabled {
+            background: #666;
+            color: white;
+        }
         
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .container {
                 padding: 15px;
             }
@@ -466,13 +526,16 @@
                 flex-direction: column;
             }
             .stats {
-                flex-direction: column;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             }
             .length-presets {
                 gap: 3px;
             }
             .url-actions {
                 flex-direction: column;
+            }
+            .protection-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -481,7 +544,7 @@
     <div class="container">
         <div class="header">
             <h1>🌐 Multi-Domain Redirect Dashboard</h1>
-            <p>Managing redirects across multiple domains with VPN protection</p>
+            <p>Advanced protection with VPN, Proxy, and Crawler detection</p>
         </div>
         
         <div id="status" class="status connecting">
@@ -511,7 +574,15 @@
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="blockedVpnIPs">0</div>
-                <div class="stat-label">Blocked VPN IPs</div>
+                <div class="stat-label">Blocked VPNs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="blockedProxyIPs">0</div>
+                <div class="stat-label">Blocked Proxies</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="blockedCrawlerIPs">0</div>
+                <div class="stat-label">Blocked Crawlers</div>
             </div>
         </div>
 
@@ -519,7 +590,7 @@
             <button class="tab active" onclick="showTab('domains')">🌐 Domains</button>
             <button class="tab" onclick="showTab('redirects')">🔗 Redirects</button>
             <button class="tab" onclick="showTab('settings')">⚙️ Settings</button>
-            <button class="tab" onclick="showTab('vpn')">🛡️ VPN Protection</button>
+            <button class="tab" onclick="showTab('protection')">🛡️ Threat Protection</button>
         </div>
 
         <!-- Domains Tab -->
@@ -673,65 +744,147 @@
             </div>
         </div>
 
-        <!-- VPN Protection Tab -->
-        <div id="vpn-tab" class="tab-content">
-            <div class="form-section">
-                <h2>🛡️ VPN Detection Settings</h2>
-                
-                <div class="form-group">
+        <!-- Threat Protection Tab -->
+        <div id="protection-tab" class="tab-content">
+            <div class="protection-grid">
+                <!-- VPN Protection Card -->
+                <div class="protection-card vpn">
+                    <div class="protection-header">
+                        <div class="protection-title">🛡️ VPN Detection</div>
+                        <div class="status-badge" id="vpnStatusBadge">Disabled</div>
+                    </div>
+                    
                     <div class="toggle-switch">
-                        <label>🛡️ Enable VPN Detection:</label>
+                        <label>Enable VPN Detection:</label>
                         <label class="switch">
                             <input type="checkbox" id="enableVpnDetection">
                             <span class="slider"></span>
                         </label>
                         <span id="vpnDetectionStatus">Disabled</span>
                     </div>
-                    <div class="settings-info">
-                        Automatically detect and block VPN/proxy connections using blackbox.ipinfo.app API
+                    
+                    <div class="form-group">
+                        <label for="vpnRedirectUrl">VPN Redirect URL:</label>
+                        <input type="url" id="vpnRedirectUrl" placeholder="https://office.com" value="">
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="vpnRedirectUrl">🔀 VPN Redirect URL:</label>
-                    <input type="url" id="vpnRedirectUrl" placeholder="https://office.com" value="">
-                    <div class="settings-info">
-                        Where to redirect VPN users when detected (leave empty to show error page)
-                    </div>
-                </div>
-                
-                <div class="form-group">
+                    
                     <div class="toggle-switch">
-                        <label>🔀 Enable VPN Redirect:</label>
+                        <label>Enable VPN Redirect:</label>
                         <label class="switch">
                             <input type="checkbox" id="enableVpnRedirect" checked>
                             <span class="slider"></span>
                         </label>
                         <span id="vpnRedirectStatus">Enabled</span>
                     </div>
-                    <div class="settings-info">
-                        Redirect VPN users instead of showing error page
-                    </div>
+                    
+                    <button onclick="testVpnDetection()" class="btn btn-warning btn-small">🔍 Test VPN</button>
                 </div>
-                
-                <button onclick="updateVpnSettings()" class="btn">🛡️ Update VPN Settings</button>
-                <button onclick="testVpnDetection()" class="btn btn-warning">🔍 Test VPN Detection</button>
-                <div id="vpnSettingsResult"></div>
+
+                <!-- Proxy Protection Card -->
+                <div class="protection-card proxy">
+                    <div class="protection-header">
+                        <div class="protection-title">🕸️ Proxy Detection</div>
+                        <div class="status-badge" id="proxyStatusBadge">Disabled</div>
+                    </div>
+                    
+                    <div class="toggle-switch">
+                        <label>Enable Proxy Detection:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableProxyDetection">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="proxyDetectionStatus">Disabled</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="proxyRedirectUrl">Proxy Redirect URL:</label>
+                        <input type="url" id="proxyRedirectUrl" placeholder="https://office.com" value="">
+                    </div>
+                    
+                    <div class="toggle-switch">
+                        <label>Enable Proxy Redirect:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableProxyRedirect" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span id="proxyRedirectStatus">Enabled</span>
+                    </div>
+                    
+                    <button onclick="testThreatDetection()" class="btn btn-warning btn-small">🔍 Test Proxy</button>
+                </div>
+
+                <!-- Crawler Protection Card -->
+                <div class="protection-card crawler">
+                    <div class="protection-header">
+                        <div class="protection-title">🤖 Crawler Detection</div>
+                        <div class="status-badge" id="crawlerStatusBadge">Disabled</div>
+                    </div>
+                    
+                    <div class="toggle-switch">
+                        <label>Enable Crawler Detection:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableCrawlerDetection">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="crawlerDetectionStatus">Disabled</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="crawlerRedirectUrl">Crawler Redirect URL:</label>
+                        <input type="url" id="crawlerRedirectUrl" placeholder="https://office.com" value="">
+                    </div>
+                    
+                    <div class="toggle-switch">
+                        <label>Enable Crawler Redirect:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableCrawlerRedirect" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span id="crawlerRedirectStatus">Enabled</span>
+                    </div>
+                    
+                    <button onclick="testThreatDetection()" class="btn btn-warning btn-small">🔍 Test Crawler</button>
+                </div>
             </div>
 
             <div class="form-section">
-                <h2>🛡️ Blocked VPN IPs</h2>
-                <div class="stats">
-                    <div class="stat-card">
-                        <div class="stat-number" id="blockedVpnCount">0</div>
-                        <div class="stat-label">Blocked VPN IPs</div>
-                    </div>
+                <button onclick="updateThreatProtectionSettings()" class="btn">🛡️ Update All Protection Settings</button>
+                <div id="protectionResult"></div>
+            </div>
+
+            <!-- Blocked IPs Management -->
+            <div class="form-section">
+                <h2>🚫 Blocked IPs Management</h2>
+                
+                <div class="tabs" style="margin-bottom: 15px;">
+                    <button class="tab active" onclick="showBlockedTab('vpn')">🛡️ VPN IPs</button>
+                    <button class="tab" onclick="showBlockedTab('proxy')">🕸️ Proxy IPs</button>
+                    <button class="tab" onclick="showBlockedTab('crawler')">🤖 Crawler IPs</button>
                 </div>
-                
-                <button onclick="loadBlockedVpnIPs()" class="btn">🔄 Refresh VPN List</button>
-                <button onclick="clearAllVpnIPs()" class="btn clear-all-btn">🗑️ Clear All VPN IPs</button>
-                
-                <div id="vpnIPsList"></div>
+
+                <!-- VPN Blocked IPs -->
+                <div id="vpn-blocked-tab" class="tab-content active">
+                    <h3>🛡️ Blocked VPN IPs</h3>
+                    <button onclick="loadBlockedVpnIPs()" class="btn btn-small">🔄 Refresh</button>
+                    <button onclick="clearAllVpnIPs()" class="btn clear-all-btn btn-small">🗑️ Clear All</button>
+                    <div id="vpnIPsList"></div>
+                </div>
+
+                <!-- Proxy Blocked IPs -->
+                <div id="proxy-blocked-tab" class="tab-content">
+                    <h3>🕸️ Blocked Proxy IPs</h3>
+                    <button onclick="loadBlockedProxyIPs()" class="btn btn-small">🔄 Refresh</button>
+                    <button onclick="clearAllProxyIPs()" class="btn clear-all-btn btn-small">🗑️ Clear All</button>
+                    <div id="proxyIPsList"></div>
+                </div>
+
+                <!-- Crawler Blocked IPs -->
+                <div id="crawler-blocked-tab" class="tab-content">
+                    <h3>🤖 Blocked Crawler IPs</h3>
+                    <button onclick="loadBlockedCrawlerIPs()" class="btn btn-small">🔄 Refresh</button>
+                    <button onclick="clearAllCrawlerIPs()" class="btn clear-all-btn btn-small">🗑️ Clear All</button>
+                    <div id="crawlerIPsList"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -750,11 +903,11 @@
         let serverIP = '';
 
         window.onload = function() {
-            console.log('🚀 Starting multi-domain dashboard...');
+            console.log('🚀 Starting multi-domain dashboard with threat protection...');
             testConnection();
             setupLengthValidation();
             setupSettingsToggle();
-            setupVpnToggle();
+            setupThreatProtectionToggles();
         };
 
         function showTab(tabName) {
@@ -777,24 +930,88 @@
                 loadRedirects();
             } else if (tabName === 'settings' && isConnected) {
                 loadSettings();
-            } else if (tabName === 'vpn' && isConnected) {
-                loadVpnSettings();
-                loadBlockedVpnIPs();
+            } else if (tabName === 'protection' && isConnected) {
+                loadThreatProtectionSettings();
+                loadAllBlockedIPs();
             }
         }
 
-        function setupVpnToggle() {
+        function showBlockedTab(type) {
+            // Hide all blocked IP tabs
+            document.querySelectorAll('[id$="-blocked-tab"]').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('#protection-tab .tabs .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`${type}-blocked-tab`).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data for the specific type
+            if (type === 'vpn') {
+                loadBlockedVpnIPs();
+            } else if (type === 'proxy') {
+                loadBlockedProxyIPs();
+            } else if (type === 'crawler') {
+                loadBlockedCrawlerIPs();
+            }
+        }
+
+        function setupThreatProtectionToggles() {
+            // VPN toggles
             const vpnDetectionToggle = document.getElementById('enableVpnDetection');
             const vpnRedirectToggle = document.getElementById('enableVpnRedirect');
             const vpnDetectionStatus = document.getElementById('vpnDetectionStatus');
             const vpnRedirectStatus = document.getElementById('vpnRedirectStatus');
+            const vpnStatusBadge = document.getElementById('vpnStatusBadge');
             
             vpnDetectionToggle.addEventListener('change', function() {
-                vpnDetectionStatus.textContent = this.checked ? 'Enabled' : 'Disabled';
+                const status = this.checked ? 'Enabled' : 'Disabled';
+                vpnDetectionStatus.textContent = status;
+                vpnStatusBadge.textContent = status;
+                vpnStatusBadge.className = `status-badge ${this.checked ? 'enabled' : 'disabled'}`;
             });
             
             vpnRedirectToggle.addEventListener('change', function() {
                 vpnRedirectStatus.textContent = this.checked ? 'Enabled' : 'Disabled';
+            });
+
+            // Proxy toggles
+            const proxyDetectionToggle = document.getElementById('enableProxyDetection');
+            const proxyRedirectToggle = document.getElementById('enableProxyRedirect');
+            const proxyDetectionStatus = document.getElementById('proxyDetectionStatus');
+            const proxyRedirectStatus = document.getElementById('proxyRedirectStatus');
+            const proxyStatusBadge = document.getElementById('proxyStatusBadge');
+            
+            proxyDetectionToggle.addEventListener('change', function() {
+                const status = this.checked ? 'Enabled' : 'Disabled';
+                proxyDetectionStatus.textContent = status;
+                proxyStatusBadge.textContent = status;
+                proxyStatusBadge.className = `status-badge ${this.checked ? 'enabled' : 'disabled'}`;
+            });
+            
+            proxyRedirectToggle.addEventListener('change', function() {
+                proxyRedirectStatus.textContent = this.checked ? 'Enabled' : 'Disabled';
+            });
+
+            // Crawler toggles
+            const crawlerDetectionToggle = document.getElementById('enableCrawlerDetection');
+            const crawlerRedirectToggle = document.getElementById('enableCrawlerRedirect');
+            const crawlerDetectionStatus = document.getElementById('crawlerDetectionStatus');
+            const crawlerRedirectStatus = document.getElementById('crawlerRedirectStatus');
+            const crawlerStatusBadge = document.getElementById('crawlerStatusBadge');
+            
+            crawlerDetectionToggle.addEventListener('change', function() {
+                const status = this.checked ? 'Enabled' : 'Disabled';
+                crawlerDetectionStatus.textContent = status;
+                crawlerStatusBadge.textContent = status;
+                crawlerStatusBadge.className = `status-badge ${this.checked ? 'enabled' : 'disabled'}`;
+            });
+            
+            crawlerRedirectToggle.addEventListener('change', function() {
+                crawlerRedirectStatus.textContent = this.checked ? 'Enabled' : 'Disabled';
             });
         }
 
@@ -894,8 +1111,8 @@
             showRedirectResult('📋 URL copied to clipboard!', 'success');
         }
 
-        // VPN Detection Functions
-        async function loadVpnSettings() {
+        // Threat Protection Functions
+        async function loadThreatProtectionSettings() {
             try {
                 const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
                     headers: { 'X-API-Key': CONFIG.apiKey }
@@ -903,25 +1120,71 @@
                 
                 if (response.ok) {
                     const settings = await response.json();
+                    
+                    // VPN Settings
                     document.getElementById('enableVpnDetection').checked = settings.enableVpnDetection || false;
                     document.getElementById('vpnRedirectUrl').value = settings.vpnRedirectUrl || 'https://office.com';
                     document.getElementById('enableVpnRedirect').checked = settings.enableVpnRedirect !== false;
                     
+                    // Proxy Settings
+                    document.getElementById('enableProxyDetection').checked = settings.enableProxyDetection || false;
+                    document.getElementById('proxyRedirectUrl').value = settings.proxyRedirectUrl || 'https://office.com';
+                    document.getElementById('enableProxyRedirect').checked = settings.enableProxyRedirect !== false;
+                    
+                    // Crawler Settings
+                    document.getElementById('enableCrawlerDetection').checked = settings.enableCrawlerDetection || false;
+                    document.getElementById('crawlerRedirectUrl').value = settings.crawlerRedirectUrl || 'https://office.com';
+                    document.getElementById('enableCrawlerRedirect').checked = settings.enableCrawlerRedirect !== false;
+                    
                     // Update status displays
-                    document.getElementById('vpnDetectionStatus').textContent = settings.enableVpnDetection ? 'Enabled' : 'Disabled';
-                    document.getElementById('vpnRedirectStatus').textContent = settings.enableVpnRedirect !== false ? 'Enabled' : 'Disabled';
+                    updateStatusDisplays(settings);
                 }
             } catch (error) {
-                console.error('Error loading VPN settings:', error);
+                console.error('Error loading threat protection settings:', error);
             }
         }
 
-        async function updateVpnSettings() {
+        function updateStatusDisplays(settings) {
+            // VPN Status
+            const vpnEnabled = settings.enableVpnDetection || false;
+            document.getElementById('vpnDetectionStatus').textContent = vpnEnabled ? 'Enabled' : 'Disabled';
+            document.getElementById('vpnRedirectStatus').textContent = settings.enableVpnRedirect !== false ? 'Enabled' : 'Disabled';
+            const vpnBadge = document.getElementById('vpnStatusBadge');
+            vpnBadge.textContent = vpnEnabled ? 'Enabled' : 'Disabled';
+            vpnBadge.className = `status-badge ${vpnEnabled ? 'enabled' : 'disabled'}`;
+            
+            // Proxy Status
+            const proxyEnabled = settings.enableProxyDetection || false;
+            document.getElementById('proxyDetectionStatus').textContent = proxyEnabled ? 'Enabled' : 'Disabled';
+            document.getElementById('proxyRedirectStatus').textContent = settings.enableProxyRedirect !== false ? 'Enabled' : 'Disabled';
+            const proxyBadge = document.getElementById('proxyStatusBadge');
+            proxyBadge.textContent = proxyEnabled ? 'Enabled' : 'Disabled';
+            proxyBadge.className = `status-badge ${proxyEnabled ? 'enabled' : 'disabled'}`;
+            
+            // Crawler Status
+            const crawlerEnabled = settings.enableCrawlerDetection || false;
+            document.getElementById('crawlerDetectionStatus').textContent = crawlerEnabled ? 'Enabled' : 'Disabled';
+            document.getElementById('crawlerRedirectStatus').textContent = settings.enableCrawlerRedirect !== false ? 'Enabled' : 'Disabled';
+            const crawlerBadge = document.getElementById('crawlerStatusBadge');
+            crawlerBadge.textContent = crawlerEnabled ? 'Enabled' : 'Disabled';
+            crawlerBadge.className = `status-badge ${crawlerEnabled ? 'enabled' : 'disabled'}`;
+        }
+
+        async function updateThreatProtectionSettings() {
             try {
                 const settings = {
+                    // VPN Settings
                     enableVpnDetection: document.getElementById('enableVpnDetection').checked,
                     vpnRedirectUrl: document.getElementById('vpnRedirectUrl').value,
-                    enableVpnRedirect: document.getElementById('enableVpnRedirect').checked
+                    enableVpnRedirect: document.getElementById('enableVpnRedirect').checked,
+                    // Proxy Settings
+                    enableProxyDetection: document.getElementById('enableProxyDetection').checked,
+                    proxyRedirectUrl: document.getElementById('proxyRedirectUrl').value,
+                    enableProxyRedirect: document.getElementById('enableProxyRedirect').checked,
+                    // Crawler Settings
+                    enableCrawlerDetection: document.getElementById('enableCrawlerDetection').checked,
+                    crawlerRedirectUrl: document.getElementById('crawlerRedirectUrl').value,
+                    enableCrawlerRedirect: document.getElementById('enableCrawlerRedirect').checked
                 };
 
                 const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
@@ -934,14 +1197,14 @@
                 });
 
                 if (response.ok) {
-                    showVpnSettingsResult('🛡️ VPN settings updated successfully!', 'success');
+                    showProtectionResult('🛡️ All threat protection settings updated successfully!', 'success');
                     loadStats(); // Refresh stats
                 } else {
                     const error = await response.json();
-                    showVpnSettingsResult(`❌ Error: ${error.error}`, 'error');
+                    showProtectionResult(`❌ Error: ${error.error}`, 'error');
                 }
             } catch (error) {
-                showVpnSettingsResult(`❌ Error: ${error.message}`, 'error');
+                showProtectionResult(`❌ Error: ${error.message}`, 'error');
             }
         }
 
@@ -952,7 +1215,7 @@
                 const ipData = await ipResponse.json();
                 const userIP = ipData.ip;
                 
-                showVpnSettingsResult(`🔍 Testing VPN detection for IP: ${userIP}...`, 'success');
+                showProtectionResult(`🔍 Testing VPN detection for IP: ${userIP}...`, 'success');
                 
                 const response = await fetch(`${CONFIG.serverUrl}/api/vpn-test/${userIP}`, {
                     headers: { 'X-API-Key': CONFIG.apiKey }
@@ -961,13 +1224,49 @@
                 if (response.ok) {
                     const result = await response.json();
                     const status = result.isVPN ? '🚫 VPN DETECTED' : '✅ Clean IP';
-                    showVpnSettingsResult(`${status} - IP: ${result.ip} | VPN: ${result.isVPN}`, result.isVPN ? 'error' : 'success');
+                    showProtectionResult(`${status} - IP: ${result.ip} | VPN: ${result.isVPN}`, result.isVPN ? 'error' : 'success');
                 } else {
-                    showVpnSettingsResult('❌ VPN test failed', 'error');
+                    showProtectionResult('❌ VPN test failed', 'error');
                 }
             } catch (error) {
-                showVpnSettingsResult(`❌ Test error: ${error.message}`, 'error');
+                showProtectionResult(`❌ Test error: ${error.message}`, 'error');
             }
+        }
+
+        async function testThreatDetection() {
+            // Get current user's IP for testing
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                const userIP = ipData.ip;
+                
+                showProtectionResult(`🔍 Testing threat analysis for IP: ${userIP}...`, 'success');
+                
+                const response = await fetch(`${CONFIG.serverUrl}/api/threat-test/${userIP}`, {
+                    headers: { 'X-API-Key': CONFIG.apiKey }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const threats = [];
+                    if (result.isProxy) threats.push('🕸️ PROXY');
+                    if (result.isCrawler) threats.push('🤖 CRAWLER');
+                    
+                    const status = threats.length > 0 ? threats.join(' + ') + ' DETECTED' : '✅ Clean IP';
+                    showProtectionResult(`${status} - IP: ${result.ip} | Proxy: ${result.isProxy} | Crawler: ${result.isCrawler}`, threats.length > 0 ? 'error' : 'success');
+                } else {
+                    showProtectionResult('❌ Threat analysis test failed', 'error');
+                }
+            } catch (error) {
+                showProtectionResult(`❌ Test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Blocked IPs Management Functions
+        function loadAllBlockedIPs() {
+            loadBlockedVpnIPs();
+            loadBlockedProxyIPs();
+            loadBlockedCrawlerIPs();
         }
 
         async function loadBlockedVpnIPs() {
@@ -978,77 +1277,141 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('blockedVpnCount').textContent = data.count;
-                    
-                    const vpnList = document.getElementById('vpnIPsList');
-                    if (data.count === 0) {
-                        vpnList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">📭 No VPN IPs blocked yet.</p>';
-                    } else {
-                        vpnList.innerHTML = `
-                            <h3>🛡️ Blocked VPN IPs (${data.count}):</h3>
-                            <div class="ip-list">
-                                ${data.ips.map(ip => `
-                                    <div class="ip-item">
-                                        <span class="ip-text">${ip}<span class="vpn-status">VPN</span></span>
-                                        <button onclick="unblockVpnIP('${ip}')" class="btn-small btn-danger">🔓 Unblock</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `;
-                    }
+                    displayBlockedIPs('vpn', data.ips, 'VPN');
                 }
             } catch (error) {
                 console.error('Error loading blocked VPN IPs:', error);
             }
         }
 
-        async function unblockVpnIP(ip) {
-            if (!confirm(`🔓 Are you sure you want to unblock VPN IP: ${ip}?`)) return;
+        async function loadBlockedProxyIPs() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-proxy-ips`, {
+                    headers: { 'X-API-Key': CONFIG.apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayBlockedIPs('proxy', data.ips, 'PROXY');
+                }
+            } catch (error) {
+                console.error('Error loading blocked Proxy IPs:', error);
+            }
+        }
+
+        async function loadBlockedCrawlerIPs() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-crawler-ips`, {
+                    headers: { 'X-API-Key': CONFIG.apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayBlockedIPs('crawler', data.ips, 'CRAWLER');
+                }
+            } catch (error) {
+                console.error('Error loading blocked Crawler IPs:', error);
+            }
+        }
+
+        function displayBlockedIPs(type, ips, label) {
+            const listElement = document.getElementById(`${type}IPsList`);
+            
+            if (ips.length === 0) {
+                listElement.innerHTML = `<p style="color: #999; text-align: center; padding: 20px;">📭 No ${label} IPs blocked yet.</p>`;
+                return;
+            }
+
+            listElement.innerHTML = `
+                <h4>🚫 Blocked ${label} IPs (${ips.length}):</h4>
+                <div class="ip-list">
+                    ${ips.map(ip => `
+                        <div class="ip-item">
+                            <span class="ip-text">${ip}<span class="threat-status ${type}">${label}</span></span>
+                            <button onclick="unblock${label}IP('${ip}')" class="btn-small btn-danger">🔓 Unblock</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Unblock functions
+        async function unblockVPNIP(ip) {
+            await unblockIP('vpn', ip, 'VPN');
+        }
+
+        async function unblockPROXYIP(ip) {
+            await unblockIP('proxy', ip, 'Proxy');
+        }
+
+        async function unblockCRAWLERIP(ip) {
+            await unblockIP('crawler', ip, 'Crawler');
+        }
+
+        async function unblockIP(type, ip, label) {
+            if (!confirm(`🔓 Are you sure you want to unblock ${label} IP: ${ip}?`)) return;
             
             try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-vpn-ips/${encodeURIComponent(ip)}`, {
+                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-${type}-ips/${encodeURIComponent(ip)}`, {
                     method: 'DELETE',
                     headers: { 'X-API-Key': CONFIG.apiKey }
                 });
                 
                 if (response.ok) {
-                    showVpnSettingsResult(`✅ VPN IP ${ip} unblocked successfully!`, 'success');
-                    loadBlockedVpnIPs();
+                    showProtectionResult(`✅ ${label} IP ${ip} unblocked successfully!`, 'success');
+                    if (type === 'vpn') loadBlockedVpnIPs();
+                    else if (type === 'proxy') loadBlockedProxyIPs();
+                    else if (type === 'crawler') loadBlockedCrawlerIPs();
                     loadStats();
                 } else {
                     const error = await response.json();
-                    showVpnSettingsResult(`❌ Error: ${error.error}`, 'error');
+                    showProtectionResult(`❌ Error: ${error.error}`, 'error');
                 }
             } catch (error) {
-                showVpnSettingsResult(`❌ Error: ${error.message}`, 'error');
+                showProtectionResult(`❌ Error: ${error.message}`, 'error');
             }
         }
 
+        // Clear all functions
         async function clearAllVpnIPs() {
-            if (!confirm('🗑️ Are you sure you want to clear ALL blocked VPN IPs? This cannot be undone.')) return;
+            await clearAllIPs('vpn', 'VPN');
+        }
+
+        async function clearAllProxyIPs() {
+            await clearAllIPs('proxy', 'Proxy');
+        }
+
+        async function clearAllCrawlerIPs() {
+            await clearAllIPs('crawler', 'Crawler');
+        }
+
+        async function clearAllIPs(type, label) {
+            if (!confirm(`🗑️ Are you sure you want to clear ALL blocked ${label} IPs? This cannot be undone.`)) return;
             
             try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-vpn-ips`, {
+                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-${type}-ips`, {
                     method: 'DELETE',
                     headers: { 'X-API-Key': CONFIG.apiKey }
                 });
                 
                 if (response.ok) {
                     const result = await response.json();
-                    showVpnSettingsResult(`✅ ${result.message}`, 'success');
-                    loadBlockedVpnIPs();
+                    showProtectionResult(`✅ ${result.message}`, 'success');
+                    if (type === 'vpn') loadBlockedVpnIPs();
+                    else if (type === 'proxy') loadBlockedProxyIPs();
+                    else if (type === 'crawler') loadBlockedCrawlerIPs();
                     loadStats();
                 } else {
                     const error = await response.json();
-                    showVpnSettingsResult(`❌ Error: ${error.error}`, 'error');
+                    showProtectionResult(`❌ Error: ${error.error}`, 'error');
                 }
             } catch (error) {
-                showVpnSettingsResult(`❌ Error: ${error.message}`, 'error');
+                showProtectionResult(`❌ Error: ${error.message}`, 'error');
             }
         }
 
-        function showVpnSettingsResult(message, type) {
-            const result = document.getElementById('vpnSettingsResult');
+        function showProtectionResult(message, type) {
+            const result = document.getElementById('protectionResult');
             result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
             
             if (type === 'success') {
@@ -1076,21 +1439,21 @@
                     serverIP = config.serverIP || 'Unknown';
                     
                     isConnected = true;
-                    statusEl.textContent = '✅ Connected to multi-domain server successfully!';
+                    statusEl.textContent = '✅ Connected to multi-domain server with advanced protection!';
                     statusEl.className = 'status connected';
                     
                     // Enable UI
                     document.getElementById('addDomainBtn').disabled = false;
                     document.getElementById('createBtn').disabled = false;
                     document.getElementById('saveSettingsBtn').disabled = false;
-                    document.getElementById('statsSection').style.display = 'flex';
+                    document.getElementById('statsSection').style.display = 'grid';
                     document.getElementById('tabsSection').style.display = 'flex';
                     
                     console.log('✅ Connection successful! Server IP:', serverIP);
                     await loadDomains();
                     await loadRedirects();
                     await loadSettings();
-                    await loadVpnSettings();
+                    await loadThreatProtectionSettings();
                     await loadStats();
                 } else if (response.status === 401) {
                     throw new Error('❌ Invalid API key - please check your configuration');
@@ -1103,6 +1466,28 @@
                 statusEl.className = 'status disconnected';
                 
                 console.error('❌ Connection error:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/stats`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const stats = await response.json();
+                document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
+                document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
+                document.getElementById('totalDomains').textContent = stats.totalDomains || 0;
+                document.getElementById('verifiedDomains').textContent = stats.verifiedDomains || 0;
+                document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
+                document.getElementById('blockedVpnIPs').textContent = stats.blockedVpnIPs || 0;
+                document.getElementById('blockedProxyIPs').textContent = stats.blockedProxyIPs || 0;
+                document.getElementById('blockedCrawlerIPs').textContent = stats.blockedCrawlerIPs || 0;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
             }
         }
 
@@ -1389,81 +1774,79 @@
             }
         }
 
-        async function loadSettings() {
+        async function loadRedirects() {
             try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
+                const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
                     headers: {
                         'X-API-Key': CONFIG.apiKey
                     }
                 });
 
-                serverSettings = await response.json();
-                
-                document.getElementById('banRedirectUrl').value = serverSettings.banRedirectUrl || '';
-                document.getElementById('enableBanRedirect').checked = serverSettings.enableBanRedirect !== false;
-                document.getElementById('banRedirectStatus').textContent = 
-                    serverSettings.enableBanRedirect !== false ? 'Enabled' : 'Disabled';
+                redirects = await response.json();
+                displayRedirects();
             } catch (error) {
-                console.error('Failed to load settings:', error);
+                document.getElementById('redirectsList').innerHTML = 
+                    `<div class="error">Failed to load redirects: ${error.message}</div>`;
             }
         }
 
-        async function saveSettings() {
-            if (!isConnected) {
-                alert('❌ Not connected to server');
+        // Enhanced display for redirects with 80-character URL truncation
+        function displayRedirects() {
+            const list = document.getElementById('redirectsList');
+            
+            if (redirects.length === 0) {
+                list.innerHTML = '<div class="loading">📭 No redirects yet. Create your first one above!</div>';
                 return;
             }
 
-            const banRedirectUrl = document.getElementById('banRedirectUrl').value.trim();
-            const enableBanRedirect = document.getElementById('enableBanRedirect').checked;
+            const sortedRedirects = [...redirects].sort((a, b) => 
+                new Date(b.created) - new Date(a.created)
+            );
 
-            if (!banRedirectUrl) {
-                showSettingsResult('❌ Please enter a ban redirect URL', 'error');
-                return;
-            }
-
-            try {
-                new URL(banRedirectUrl);
-            } catch {
-                showSettingsResult('❌ Please enter a valid URL (include https://)', 'error');
-                return;
-            }
-
-            const saveBtn = document.getElementById('saveSettingsBtn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = '⏳ Saving...';
-
-            try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': CONFIG.apiKey
-                    },
-                    body: JSON.stringify({
-                        banRedirectUrl: banRedirectUrl,
-                        enableBanRedirect: enableBanRedirect
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    serverSettings = data;
-                    showSettingsResult(`
-                        <strong>💾 Settings Saved!</strong><br>
-                        Ban Redirect URL: ${banRedirectUrl}<br>
-                        Redirect Enabled: ${enableBanRedirect ? 'Yes' : 'No'}
-                    `, 'success');
-                } else {
-                    throw new Error(data.error || 'Failed to save settings');
-                }
-            } catch (error) {
-                showSettingsResult(`❌ Error: ${error.message}`, 'error');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = '💾 Save Settings';
-            }
+            list.innerHTML = sortedRedirects.map((redirect, index) => {
+                const shortUrl = `https://${redirect.domain}/${redirect.fullPath}`;
+                const truncatedUrl = truncateUrl(shortUrl); // EXACTLY 80 chars + "..."
+                const isLongUrl = shortUrl.length > 80;
+                const createdDate = new Date(redirect.created).toLocaleDateString();
+                const uniqueId = `redirect-${index}`;
+                
+                return `
+                    <div class="redirect-item">
+                        <div class="redirect-url-container">
+                            <div class="redirect-url-short" onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" title="Click to copy">
+                                🔗 ${truncatedUrl}
+                            </div>
+                            ${isLongUrl ? `
+                                <div class="redirect-url-full" id="full-${uniqueId}">
+                                    ${shortUrl}
+                                </div>
+                                <div class="url-toggle" onclick="toggleFullUrl('${uniqueId}')">
+                                    <span id="toggle-text-${uniqueId}">Show full URL</span>
+                                </div>
+                            ` : ''}
+                            <span class="copy-feedback" id="copy-feedback-${uniqueId}">📋 Copied!</span>
+                            
+                            <div class="url-actions">
+                                <button onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" class="btn-success btn-small">📋 Copy Link</button>
+                                <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
+                            </div>
+                        </div>
+                        
+                        <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
+                        <div class="redirect-stats">
+                            👆 ${redirect.clicks} clicks | 🌐 ${redirect.domain} | 📅 Created: ${createdDate} | 
+                            📏 ${redirect.length || 8} chars | 
+                            ${redirect.active ? '✅ Active' : '❌ Inactive'}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
+                                ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
+                            </button>
+                            <button onclick="deleteRedirect('${redirect.fullPath}')" class="btn-danger btn-small">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         async function createRedirect() {
@@ -1555,101 +1938,6 @@
             }
         }
 
-        async function loadRedirects() {
-            try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/redirects`, {
-                    headers: {
-                        'X-API-Key': CONFIG.apiKey
-                    }
-                });
-
-                redirects = await response.json();
-                displayRedirects();
-            } catch (error) {
-                document.getElementById('redirectsList').innerHTML = 
-                    `<div class="error">Failed to load redirects: ${error.message}</div>`;
-            }
-        }
-
-        // Enhanced display for redirects with 80-character URL truncation
-        function displayRedirects() {
-            const list = document.getElementById('redirectsList');
-            
-            if (redirects.length === 0) {
-                list.innerHTML = '<div class="loading">📭 No redirects yet. Create your first one above!</div>';
-                return;
-            }
-
-            const sortedRedirects = [...redirects].sort((a, b) => 
-                new Date(b.created) - new Date(a.created)
-            );
-
-            list.innerHTML = sortedRedirects.map((redirect, index) => {
-                const shortUrl = `https://${redirect.domain}/${redirect.fullPath}`;
-                const truncatedUrl = truncateUrl(shortUrl); // EXACTLY 80 chars + "..."
-                const isLongUrl = shortUrl.length > 80;
-                const createdDate = new Date(redirect.created).toLocaleDateString();
-                const uniqueId = `redirect-${index}`;
-                
-                return `
-                    <div class="redirect-item">
-                        <div class="redirect-url-container">
-                            <div class="redirect-url-short" onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" title="Click to copy">
-                                🔗 ${truncatedUrl}
-                            </div>
-                            ${isLongUrl ? `
-                                <div class="redirect-url-full" id="full-${uniqueId}">
-                                    ${shortUrl}
-                                </div>
-                                <div class="url-toggle" onclick="toggleFullUrl('${uniqueId}')">
-                                    <span id="toggle-text-${uniqueId}">Show full URL</span>
-                                </div>
-                            ` : ''}
-                            <span class="copy-feedback" id="copy-feedback-${uniqueId}">📋 Copied!</span>
-                            
-                            <div class="url-actions">
-                                <button onclick="copyToClipboard('${shortUrl}', '${uniqueId}')" class="btn-success btn-small">📋 Copy Link</button>
-                                <button onclick="window.open('${shortUrl}', '_blank')" class="btn-small">🔗 Test</button>
-                            </div>
-                        </div>
-                        
-                        <div class="redirect-destination">➡️ ${redirect.destinationUrl}</div>
-                        <div class="redirect-stats">
-                            👆 ${redirect.clicks} clicks | 🌐 ${redirect.domain} | 📅 Created: ${createdDate} | 
-                            📏 ${redirect.length || 8} chars | 
-                            ${redirect.active ? '✅ Active' : '❌ Inactive'}
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <button onclick="toggleRedirect('${redirect.fullPath}', ${redirect.active})" class="btn-small">
-                                ${redirect.active ? '⏸️ Deactivate' : '▶️ Activate'}
-                            </button>
-                            <button onclick="deleteRedirect('${redirect.fullPath}')" class="btn-danger btn-small">🗑️ Delete</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        async function loadStats() {
-            try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/stats`, {
-                    headers: {
-                        'X-API-Key': CONFIG.apiKey
-                    }
-                });
-
-                const stats = await response.json();
-                document.getElementById('totalRedirects').textContent = stats.totalRedirects || 0;
-                document.getElementById('totalClicks').textContent = stats.totalClicks || 0;
-                document.getElementById('totalDomains').textContent = stats.totalDomains || 0;
-                document.getElementById('verifiedDomains').textContent = stats.verifiedDomains || 0;
-                document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
-                document.getElementById('blockedVpnIPs').textContent = stats.blockedVpnIPs || 0;
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        }
-
         async function deleteRedirect(fullPath) {
             if (!confirm('🗑️ Are you sure you want to delete this redirect?')) return;
 
@@ -1700,6 +1988,83 @@
             }
         }
 
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                serverSettings = await response.json();
+                
+                document.getElementById('banRedirectUrl').value = serverSettings.banRedirectUrl || '';
+                document.getElementById('enableBanRedirect').checked = serverSettings.enableBanRedirect !== false;
+                document.getElementById('banRedirectStatus').textContent = 
+                    serverSettings.enableBanRedirect !== false ? 'Enabled' : 'Disabled';
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        async function saveSettings() {
+            if (!isConnected) {
+                alert('❌ Not connected to server');
+                return;
+            }
+
+            const banRedirectUrl = document.getElementById('banRedirectUrl').value.trim();
+            const enableBanRedirect = document.getElementById('enableBanRedirect').checked;
+
+            if (!banRedirectUrl) {
+                showSettingsResult('❌ Please enter a ban redirect URL', 'error');
+                return;
+            }
+
+            try {
+                new URL(banRedirectUrl);
+            } catch {
+                showSettingsResult('❌ Please enter a valid URL (include https://)', 'error');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveSettingsBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Saving...';
+
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({
+                        banRedirectUrl: banRedirectUrl,
+                        enableBanRedirect: enableBanRedirect
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    serverSettings = data;
+                    showSettingsResult(`
+                        <strong>💾 Settings Saved!</strong><br>
+                        Ban Redirect URL: ${banRedirectUrl}<br>
+                        Redirect Enabled: ${enableBanRedirect ? 'Yes' : 'No'}
+                    `, 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to save settings');
+                }
+            } catch (error) {
+                showSettingsResult(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Settings';
+            }
+        }
+
         function showDomainResult(message, type) {
             const result = document.getElementById('domainResult');
             result.innerHTML = `<div class="${type}" style="margin-top: 15px; padding: 10px; border-radius: 5px;">${message}</div>`;
@@ -1736,8 +2101,8 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             if (isConnected) {
-                loadVpnSettings();
-                loadBlockedVpnIPs();
+                loadThreatProtectionSettings();
+                loadAllBlockedIPs();
             }
         });
     </script>
