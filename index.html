@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background: #1a1a2e;
             border-radius: 8px;
@@ -38,6 +38,7 @@
             display: flex;
             margin-bottom: 20px;
             border-bottom: 2px solid #333;
+            flex-wrap: wrap;
         }
         .tab {
             padding: 12px 20px;
@@ -49,6 +50,7 @@
             margin-right: 5px;
             font-size: 14px;
             transition: all 0.3s;
+            margin-bottom: 5px;
         }
         .tab.active {
             background: #667eea;
@@ -405,6 +407,105 @@
             background: #2a2a44;
             border-radius: 4px;
         }
+
+        /* Antibot specific styles */
+        .antibot-section {
+            background: #232344;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff6b6b;
+        }
+        .antibot-section h3 {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .setting-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #2a2a44;
+            border-radius: 6px;
+        }
+        .setting-item label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .setting-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            width: auto;
+        }
+        .help-text {
+            display: block;
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 5px;
+            margin-left: 30px;
+            background: #1a1a1a;
+            padding: 5px 8px;
+            border-radius: 3px;
+        }
+        .api-warning {
+            margin-top: 15px;
+            padding: 15px;
+            background: #4d2e1e;
+            border: 1px solid #ff6b6b;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #ffcccc;
+        }
+        .api-warning strong {
+            color: #ff6b6b;
+        }
+        .reason-breakdown {
+            margin: 15px 0;
+            padding: 15px;
+            background: #2a2a44;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .recent-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #444;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        .recent-info {
+            flex: 1;
+        }
+        .recent-ip {
+            font-weight: 600;
+            color: #ff6b6b;
+        }
+        .recent-time {
+            color: #999;
+            font-size: 0.8em;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-active {
+            background: #4caf50;
+        }
+        .status-inactive {
+            background: #f44336;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 15px;
@@ -435,7 +536,7 @@
     <div class="container">
         <div class="header">
             <h1>🌐 Multi-Domain Redirect Dashboard</h1>
-            <p>Managing redirects across multiple domains</p>
+            <p>Managing redirects across multiple domains with enterprise antibot protection</p>
         </div>
         
         <div id="status" class="status connecting">
@@ -463,11 +564,22 @@
                 <div class="stat-number" id="bannedIPs">0</div>
                 <div class="stat-label">Banned IPs</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-number" id="blockedBots">0</div>
+                <div class="stat-label">Blocked Bots</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="protectionStatus">
+                    <span class="status-indicator status-inactive"></span>OFF
+                </div>
+                <div class="stat-label">Antibot Protection</div>
+            </div>
         </div>
 
         <div class="tabs" id="tabsSection" style="display: none;">
             <button class="tab active" onclick="showTab('domains')">🌐 Domains</button>
             <button class="tab" onclick="showTab('redirects')">🔗 Redirects</button>
+            <button class="tab" onclick="showTab('antibot')">🤖 Antibot</button>
             <button class="tab" onclick="showTab('settings')">⚙️ Settings</button>
         </div>
 
@@ -585,6 +697,74 @@
             </div>
         </div>
 
+        <!-- Antibot Tab -->
+        <div id="antibot-tab" class="tab-content">
+            <div class="antibot-section">
+                <h3>🤖 Enterprise Antibot Protection</h3>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="antibotEnabled">
+                        <strong>🛡️ Enable Antibot Protection</strong>
+                    </label>
+                    <small class="help-text">Master switch for all antibot features</small>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="blockHost">
+                        🌐 Block by Hostname/User-Agent
+                    </label>
+                    <small class="help-text">Block known bot hostnames and user agents (Fast, local - ~1ms)</small>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="blockIpRange">
+                        📍 Block by IP Range
+                    </label>
+                    <small class="help-text">Block specific IP addresses and ranges (Fast, local - ~1ms)</small>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="blockProxyRdp">
+                        🛡️ Block Proxy/RDP
+                    </label>
+                    <small class="help-text">⚠️ Uses external APIs (IPTrooper + Highwall) - adds 1-3 seconds latency</small>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="blockVpn">
+                        🔒 Block VPN Only
+                    </label>
+                    <small class="help-text">⚠️ Dedicated VPN detection via BlackBox IPInfo API - adds 1-2 seconds latency</small>
+                </div>
+                
+                <button onclick="saveAntibotSettings()" class="btn-success">💾 Save Antibot Settings</button>
+                
+                <div class="api-warning">
+                    <strong>⚠️ API Usage Notice:</strong><br>
+                    • <strong>Local Checks:</strong> Hostname, User-Agent, IP Range (~1ms each)<br>
+                    • <strong>Proxy/RDP:</strong> Uses IPTrooper + Highwall APIs (1-3 seconds)<br>
+                    • <strong>VPN Detection:</strong> Uses BlackBox IPInfo API (1-2 seconds)<br>
+                    • <strong>Total Max Latency:</strong> Up to 5 seconds if all external APIs enabled<br>
+                    • Consider impact on user experience for high-traffic sites
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>📊 Bot Detection Statistics</h2>
+                <div id="reasonBreakdown" class="reason-breakdown">
+                    <div class="loading">Loading bot statistics...</div>
+                </div>
+                <div id="recentBots" class="recent-list">
+                    <div class="loading">Loading recent blocks...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Tab -->
         <div id="settings-tab" class="tab-content">
             <div class="form-section">
@@ -661,6 +841,9 @@
                 loadDomains();
             } else if (tabName === 'redirects' && isConnected) {
                 loadRedirects();
+            } else if (tabName === 'antibot' && isConnected) {
+                loadAntibotSettings();
+                updateBotStats();
             } else if (tabName === 'settings' && isConnected) {
                 loadSettings();
             }
@@ -794,7 +977,9 @@
                     await loadDomains();
                     await loadRedirects();
                     await loadSettings();
+                    await loadAntibotSettings();
                     await loadStats();
+                    await updateBotStats();
                 } else if (response.status === 401) {
                     throw new Error('❌ Invalid API key - please check your configuration');
                 } else {
@@ -806,6 +991,124 @@
                 statusEl.className = 'status disconnected';
                 
                 console.error('❌ Connection error:', error);
+            }
+        }
+
+        // Load antibot settings
+        async function loadAntibotSettings() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/antibot-settings`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+
+                const settings = await response.json();
+                
+                document.getElementById('antibotEnabled').checked = settings.enabled;
+                document.getElementById('blockHost').checked = settings.blockHost;
+                document.getElementById('blockIpRange').checked = settings.blockIpRange;
+                document.getElementById('blockProxyRdp').checked = settings.blockProxyRdp;
+                document.getElementById('blockVpn').checked = settings.blockVpn;
+            } catch (error) {
+                console.error('Error loading antibot settings:', error);
+            }
+        }
+
+        // Save antibot settings
+        async function saveAntibotSettings() {
+            try {
+                const settings = {
+                    enabled: document.getElementById('antibotEnabled').checked,
+                    blockHost: document.getElementById('blockHost').checked,
+                    blockIpRange: document.getElementById('blockIpRange').checked,
+                    blockProxyRdp: document.getElementById('blockProxyRdp').checked,
+                    blockVpn: document.getElementById('blockVpn').checked
+                };
+                
+                const response = await fetch(`${CONFIG.serverUrl}/api/antibot-settings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (response.ok) {
+                    await loadStats(); // Refresh protection status
+                    showAntibotResult('🛡️ Antibot settings saved successfully!', 'success');
+                    
+                    // Warn about API usage
+                    if (settings.blockProxyRdp || settings.blockVpn) {
+                        let apiWarning = '⚠️ External API blocking enabled:\n';
+                        if (settings.blockProxyRdp) apiWarning += '• Proxy/RDP detection active (1-3s latency)\n';
+                        if (settings.blockVpn) apiWarning += '• VPN detection active (1-2s latency)\n';
+                        apiWarning += '\nThis may impact user experience on high-traffic sites.';
+                        setTimeout(() => alert(apiWarning), 500);
+                    }
+                } else {
+                    showAntibotResult('❌ Failed to save antibot settings', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving antibot settings:', error);
+                showAntibotResult('❌ Error saving antibot settings', 'error');
+            }
+        }
+
+        // Update bot statistics
+        async function updateBotStats() {
+            try {
+                const response = await fetch(`${CONFIG.serverUrl}/api/blocked-bots`, {
+                    headers: {
+                        'X-API-Key': CONFIG.apiKey
+                    }
+                });
+                const data = await response.json();
+                
+                // Update main count
+                document.getElementById('blockedBots').textContent = data.count;
+                
+                // Show reason breakdown with icons
+                const reasonDiv = document.getElementById('reasonBreakdown');
+                const reasonIcons = {
+                    'hostname': '🌐',
+                    'user-agent': '🔍',
+                    'ip': '📍',
+                    'proxy/rdp': '🛡️',
+                    'vpn': '🔒'
+                };
+                
+                if (Object.keys(data.byReason || {}).length === 0) {
+                    reasonDiv.innerHTML = '<strong>📊 Block Statistics</strong><br><small>No blocks recorded yet</small>';
+                } else {
+                    const reasonText = Object.entries(data.byReason)
+                        .map(([reason, count]) => `${reasonIcons[reason] || '❓'} ${reason}: ${count}`)
+                        .join('<br>');
+                    reasonDiv.innerHTML = `<strong>📊 Block Statistics</strong><br>${reasonText}`;
+                }
+                
+                // Show recent bots
+                const recentBotsDiv = document.getElementById('recentBots');
+                if (!data.recent || data.recent.length === 0) {
+                    recentBotsDiv.innerHTML = '<div class="loading">No recent blocks</div>';
+                } else {
+                    recentBotsDiv.innerHTML = data.recent.slice(0, 10).map(bot => {
+                        const icon = reasonIcons[bot.reason] || '❓';
+                        const time = new Date(bot.timestamp).toLocaleTimeString();
+                        return `
+                            <div class="recent-item">
+                                <div class="recent-info">
+                                    <div>${icon} <span class="recent-ip">${bot.ip}</span> - ${bot.reason}</div>
+                                    <div class="recent-time">${bot.hostname} at ${time}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error updating bot stats:', error);
             }
         }
 
@@ -1347,6 +1650,15 @@
                 document.getElementById('totalDomains').textContent = stats.totalDomains || 0;
                 document.getElementById('verifiedDomains').textContent = stats.verifiedDomains || 0;
                 document.getElementById('bannedIPs').textContent = stats.bannedIPs || 0;
+                document.getElementById('blockedBots').textContent = stats.blockedBots || 0;
+                
+                // Update protection status
+                const statusEl = document.getElementById('protectionStatus');
+                if (stats.antibotEnabled) {
+                    statusEl.innerHTML = '<span class="status-indicator status-active"></span>ON';
+                } else {
+                    statusEl.innerHTML = '<span class="status-indicator status-inactive"></span>OFF';
+                }
             } catch (error) {
                 console.error('Failed to load stats:', error);
             }
@@ -1369,7 +1681,8 @@
                     await loadStats();
                     await loadDomains();
                 } else {
-                    throw new Error('Failed to delete redirect');
+                    const err = await response.json().catch(()=>({ error: 'Unknown' }));
+                    throw new Error(err.error || 'Failed to delete redirect');
                 }
             } catch (error) {
                 showRedirectResult(`❌ Error deleting redirect: ${error.message}`, 'error');
@@ -1395,7 +1708,8 @@
                     await loadRedirects();
                     await loadStats();
                 } else {
-                    throw new Error('Failed to update redirect');
+                    const err = await response.json().catch(()=>({ error: 'Unknown' }));
+                    throw new Error(err.error || 'Failed to update redirect');
                 }
             } catch (error) {
                 showRedirectResult(`❌ Error updating redirect: ${error.message}`, 'error');
@@ -1434,6 +1748,31 @@
                 }, 3000);
             }
         }
+
+        // Set up auto-refresh intervals
+        setInterval(() => {
+            if (isConnected) {
+                loadStats();
+                updateBotStats();
+            }
+        }, 30000); // Refresh every 30 seconds
+
+        // Initial UI focus and accessibility
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // Close any open verification results quickly
+                document.querySelectorAll('.verification-result, .antibot-result').forEach(el => el.innerHTML = '');
+            }
+        });
+
+        // Ensure the dashboard periodically refreshes redirects and domains too
+        setInterval(() => {
+            if (isConnected) {
+                loadRedirects();
+                loadDomains();
+            }
+        }, 60000); // Refresh redirects & domains every 60 seconds
+
     </script>
 </body>
 </html>
