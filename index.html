@@ -1427,7 +1427,7 @@
             try {
                 console.log('🔗 Testing connection to:', CONFIG.serverUrl);
                 
-                const response = await fetch(`${CONFIG.serverUrl}/api/config`, {
+                const response = await fetch(`${CONFIG.serverUrl}/api/health`, {
                     headers: {
                         'X-API-Key': CONFIG.apiKey
                     }
